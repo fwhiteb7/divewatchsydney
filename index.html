@@ -7,23 +7,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,900;1,400&family=Spline+Sans+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --ink:        #f0f6ff;
-  --deep:       #e8f0fb;
-  --mid:        #dce8f8;
-  --surface:    #ffffff;
-  --rim:        #c0d4ee;
-  --text:       #0d1f3c;
-  --muted:      #5a7da0;
-  --accent:     #0077cc;
-  --go:         #006e30;
-  --maybe:      #b35c00;
-  --no:         #b30020;
-  --go-bg:      rgba(0,110,48,0.10);
-  --maybe-bg:   rgba(179,92,0,0.10);
-  --no-bg:      rgba(179,0,32,0.10);
+  --ink:        #04080f;
+  --deep:       #060d18;
+  --mid:        #091220;
+  --surface:    #0d1828;
+  --rim:        #122030;
+  --text:       #c8f0e8;
+  --muted:      #2a6858;
+  --accent:     #00ffcc;
+  --go:         #00ff88;
+  --maybe:      #ffdd00;
+  --no:         #ff3355;
+  --go-bg:      rgba(0,255,136,0.08);
+  --maybe-bg:   rgba(255,221,0,0.08);
+  --no-bg:      rgba(255,51,85,0.08);
   /* aliases used by the Sources panel markup */
-  --card:       #ffffff;
-  --border:     #c0d4ee;
+  --card:       #0d1828;
+  --border:     #122030;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,10 +44,10 @@ body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 160% 80% at 10%  5%, rgba(0,100,200,.05) 0%, transparent 50%),
-    radial-gradient(ellipse  90% 140% at 88% 92%, rgba(0,60,160,.06)  0%, transparent 55%),
-    radial-gradient(ellipse  70% 70%  at 55% 48%, rgba(0,120,220,.04) 0%, transparent 58%),
-    radial-gradient(ellipse  40% 40%  at 25% 75%, rgba(0,150,100,.03) 0%, transparent 45%);
+    radial-gradient(ellipse 160% 80% at 10%  5%, rgba(0,255,200,.07) 0%, transparent 50%),
+    radial-gradient(ellipse  90% 140% at 88% 92%, rgba(0,40,120,.14)  0%, transparent 55%),
+    radial-gradient(ellipse  70% 70%  at 55% 48%, rgba(0,220,180,.04) 0%, transparent 58%),
+    radial-gradient(ellipse  40% 40%  at 25% 75%, rgba(0,255,136,.04) 0%, transparent 45%);
   animation: caustic 16s ease-in-out infinite alternate;
 }
 @keyframes caustic {
