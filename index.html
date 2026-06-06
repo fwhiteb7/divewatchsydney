@@ -15,12 +15,12 @@
   --text:       #0d1f3c;
   --muted:      #5a7da0;
   --accent:     #0077cc;
-  --go:         #008844;
-  --maybe:      #cc7700;
-  --no:         #cc1133;
-  --go-bg:      rgba(0,136,68,0.08);
-  --maybe-bg:   rgba(204,119,0,0.08);
-  --no-bg:      rgba(204,17,51,0.08);
+  --go:         #006e30;
+  --maybe:      #b35c00;
+  --no:         #b30020;
+  --go-bg:      rgba(0,110,48,0.10);
+  --maybe-bg:   rgba(179,92,0,0.10);
+  --no-bg:      rgba(179,0,32,0.10);
   /* aliases used by the Sources panel markup */
   --card:       #ffffff;
   --border:     #c0d4ee;
@@ -118,10 +118,10 @@ body::after {
 }
 .sl-group { flex: 1; min-width: 130px; }
 .sl-label {
-  font-size: .63rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase;
+  font-size: .7rem; color: var(--text); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;
 }
-.sl-label .v { color: var(--accent); font-size: .75rem; }
+.sl-label .v { color: var(--accent); font-size: .82rem; font-weight: 700; }
 .sl-hint {
   font-size: .58rem; color: var(--muted); margin-top: 4px; opacity: .7; line-height: 1.4;
   text-align: center;
@@ -880,7 +880,7 @@ function assess(site, dayData, prefs){
   const swMAYBE = !swNO && es > prefs.maxSwell * 0.8;
 
   const wdNO    = ew > prefs.maxWind;
-  const wdMAYBE = !wdNO && (ew > prefs.maxWind * 0.8 || (ew > 10 && ew <= 15));
+  const wdMAYBE = !wdNO && (ew > prefs.maxWind * 0.8 || (ew > 10 && ew <= 15 && prefs.maxWind >= 15));
 
   const hasTemp = dayData.temp != null;
   const tMAYBE  = hasTemp && prefs.minTemp > 0 && dayData.temp < prefs.minTemp;
