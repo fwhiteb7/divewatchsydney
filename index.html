@@ -1164,9 +1164,13 @@ function bestDiveWindow(dateKey){
     return h + m/60;
   };
 
-  const daytimeHighs = highs.filter(h => { const hr = sydHour(h.dt); return hr >= 5 && hr <= 19; });
-  const targetHigh = daytimeHighs.find(h => sydHour(h.dt) <= 13)
-                  || daytimeHighs[0]
+  // Prefer a high whose 90-min lead window starts at ≥6am (i.e. high ≥ 7:30am)
+  const reasonableHighs = highs.filter(h => { const hr=sydHour(h.dt); return hr>=7.5 && hr<=19; });
+  const daytimeHighs    = highs.filter(h => { const hr=sydHour(h.dt); return hr>=5   && hr<=19; });
+
+  const targetHigh = reasonableHighs.find(h => sydHour(h.dt) <= 13.5)  // morning reasonable
+                  || reasonableHighs[0]                                   // afternoon reasonable
+                  || daytimeHighs[0]                                      // pre-dawn fallback
                   || null;
 
   if(!targetHigh){
@@ -1188,8 +1192,13 @@ function bestDiveWindow(dateKey){
     return { window:'7–9am', tideNote };
   }
 
-  const winStart = new Date(targetHigh.dt.getTime() - 90*60000);
-  const winEnd   = new Date(targetHigh.dt.getTime() + 60*60000);
+  let winStart = new Date(targetHigh.dt.getTime() - 90*60000);
+  const winEnd = new Date(targetHigh.dt.getTime() + 60*60000);
+
+  // Never suggest a window before 6am — clamp if the high is very early morning
+  const startHr = sydHour(winStart);
+  if(startHr < 6) winStart = new Date(winStart.getTime() + (6 - startHr) * 3600000);
+
   const fmt = dt => dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'numeric',minute:'2-digit',hour12:true})
                       .replace(':00','').toLowerCase().replace(' ','');
   const lows = exs.filter(e=>e.type==='Low');
