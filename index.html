@@ -519,17 +519,23 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 </div>
 
 <!-- Now strip -->
+<div style="display:flex;justify-content:center;margin-bottom:12px;">
 <div id="now-strip" style="
-  display:flex; align-items:center; gap:18px; flex-wrap:wrap;
-  padding:8px 14px; margin-bottom:12px;
-  background:var(--deep); border:1px solid var(--rim); border-radius:7px;
+  display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
+  padding:7px 16px;
+  background:var(--deep); border:1px solid var(--rim); border-radius:20px;
   font-size:.68rem; color:var(--muted); letter-spacing:.04em;
 ">
-  <span style="font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);opacity:.6;white-space:nowrap">SYDNEY NOW</span>
-  <span id="now-swell" class="pulse" style="color:var(--muted)">swell &mdash;</span>
-  <span id="now-wind"  class="pulse" style="color:var(--muted)">wind &mdash;</span>
-  <span id="now-temp"  class="pulse" style="color:var(--muted)">water &mdash;</span>
-  <span id="now-viz"   class="pulse" style="color:var(--muted)">viz &mdash;</span>
+  <span style="font-size:.57rem;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);opacity:.8;white-space:nowrap">Sydney Now</span>
+  <span style="opacity:.2">|</span>
+  <span id="now-swell" class="pulse" style="color:var(--muted);white-space:nowrap">swell &mdash;</span>
+  <span style="opacity:.2">·</span>
+  <span id="now-wind"  class="pulse" style="color:var(--muted);white-space:nowrap">wind &mdash;</span>
+  <span style="opacity:.2">·</span>
+  <span id="now-temp"  class="pulse" style="color:var(--muted);white-space:nowrap">water &mdash;</span>
+  <span style="opacity:.2">·</span>
+  <span id="now-viz"   class="pulse" style="color:var(--muted);white-space:nowrap">viz &mdash;</span>
+</div>
 </div>
 
 <!-- Day nav -->
@@ -991,26 +997,31 @@ function updateNowStrip(){
   const tempEl =document.getElementById('now-temp');
   const vizEl  =document.getElementById('now-viz');
 
+  const lbl = s => '<span style="font-size:.57rem;letter-spacing:.09em;text-transform:uppercase;opacity:.4;margin-right:.3em">'+s+'</span>';
+
   if(swellEl) swellEl.innerHTML=
+    lbl('Swell')+
     '<span style="color:'+condColor(today.swell,PREFS.maxSwell)+'">'+today.swell.toFixed(2)+'m</span>'+
-    (today.period!=null?' <span style="opacity:.5;font-size:.6rem">'+today.period.toFixed(0)+'s</span> ':'  ')+
-    '<span style="font-size:.6rem;opacity:.55">'+(deg2cp(today.swellDir)||'')+'</span>';
+    (today.period!=null?' <span style="opacity:.55;font-size:.62rem">'+today.period.toFixed(0)+'s</span>':'')+
+    (deg2cp(today.swellDir)?' <span style="font-size:.62rem;opacity:.5">'+deg2cp(today.swellDir)+'</span>':'');
 
   if(windEl) windEl.innerHTML=
+    lbl('Wind')+
     '<span style="color:'+condColor(today.wind,PREFS.maxWind)+'">'+today.wind.toFixed(0)+'kt</span>'+
-    ' <span style="font-size:.6rem;opacity:.55">'+(deg2cp(today.windDir)||'')+'</span>';
+    (deg2cp(today.windDir)?' <span style="font-size:.62rem;opacity:.5">'+deg2cp(today.windDir)+'</span>':'');
 
   if(tempEl && today.temp!=null){
     const diff=today.temp-avg;
-    const ctx=diff>=0?'+'+diff.toFixed(1)+'°':' '+diff.toFixed(1)+'°';
+    const ctx=diff>=0?'+'+diff.toFixed(1)+'°':diff.toFixed(1)+'°';
     const ws=wetsuitRec(today.temp);
     tempEl.innerHTML=
+      lbl('Water')+
       '<span style="color:'+(ws?.good?'var(--go)':'var(--muted)')+'">'+today.temp.toFixed(1)+'°C</span>'+
-      ' <span style="font-size:.6rem;opacity:.55">('+ctx+' avg · '+(ws?.suit||'?')+')</span>';
+      ' <span style="font-size:.62rem;opacity:.5">('+ctx+' avg · '+(ws?.suit||'?')+')</span>';
   }
 
   if(vizEl) vizEl.innerHTML=
-    '<span style="opacity:.75">~'+inferViz(today.swell,today.wind)+'</span>';
+    lbl('Viz')+'<span style="opacity:.8">~'+inferViz(today.swell,today.wind)+'</span>';
 
   [swellEl,windEl,tempEl,vizEl].forEach(el=>el?.classList.remove('pulse'));
 }
