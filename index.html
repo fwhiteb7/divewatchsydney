@@ -1346,7 +1346,7 @@ function renderVerdict(){
   const condGrid=hd&&!cal?.blocked?
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:6px">'+
       '<div style="white-space:nowrap"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Swell (raw)</div>'+
-        '<span style="color:'+condColor(hd.swell,PREFS.maxSwell)+'">'+hd.swell.toFixed(2)+'m</span>'+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
+        '<span style="color:'+condColor(hd.swell,PREFS.maxSwell)+'">'+hd.swell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.6rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(hd.swellDir)+'</span>':'')+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
       '</div>'+
       '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Wind</div>'+
         '<span style="color:'+condColor(hd.wind,PREFS.maxWind)+'">'+hd.wind.toFixed(0)+'kt '+(deg2cp(hd.windDir)||'')+'</span></div>'+
@@ -1464,10 +1464,12 @@ function renderSites(){
     const textCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'var(--muted)';
     const curMonth=new Date().getMonth();
     const activeWildlife=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth));
+    const effSwellDir=dd?.swellDir!=null?' <span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(dd.swellDir)+'</span>':'';
+    const effWindDir=dd?.windDir!=null?' <span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(dd.windDir)+'</span>':'';
     const effStr=r.eff?.swell!=null
-      ? '<span style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</span>'
+      ? '<span style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</span>'+effSwellDir
         +' <span style="color:var(--muted)">/</span>'
-        +' <span style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</span>'
+        +' <span style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</span>'+effWindDir
       : '';
     const regionLabel=FEATURED_LABELS[site.id]||'';
     const detailHtml=
@@ -1511,17 +1513,19 @@ function renderSites(){
     const curMonth=new Date().getMonth();
     const activeWildlife=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth));
     let condLine='', condLine2='';
+    const swellDirStr=dd?.swellDir!=null?'<span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)"> '+deg2cp(dd.swellDir)+'</span>':'';
+    const windDirStr=dd?.windDir!=null?'<span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)"> '+deg2cp(dd.windDir)+'</span>':'';
     if(r.eff?.swell!=null){
       const sc=condColor(r.eff.swell,PREFS.maxSwell), wc=condColor(r.eff.wind,PREFS.maxWind);
-      condLine='<span style="color:'+sc+'">'+r.eff.swell.toFixed(2)+'m</span> <span style="color:var(--muted)">/</span> <span style="color:'+wc+'">'+r.eff.wind.toFixed(1)+'kt</span>';
+      condLine='<span style="color:'+sc+'">'+r.eff.swell.toFixed(2)+'m</span>'+swellDirStr+' <span style="color:var(--muted)">/</span> <span style="color:'+wc+'">'+r.eff.wind.toFixed(1)+'kt</span>'+windDirStr;
     } else if(dd){
       const sc=condColor(dd.swell,PREFS.maxSwell), wc=condColor(dd.wind,PREFS.maxWind);
-      condLine='<span style="color:'+sc+'">'+dd.swell.toFixed(2)+'m</span> <span style="color:var(--muted)">/</span> <span style="color:'+wc+'">'+dd.wind.toFixed(1)+'kt</span>';
+      condLine='<span style="color:'+sc+'">'+dd.swell.toFixed(2)+'m</span>'+swellDirStr+' <span style="color:var(--muted)">/</span> <span style="color:'+wc+'">'+dd.wind.toFixed(1)+'kt</span>'+windDirStr;
     }
     if(dd?.temp){ const ws=wetsuitRec(dd.temp); condLine2='<span style="color:'+(ws?.good?'var(--go)':'var(--muted)')+'">'+dd.temp.toFixed(1)+'°C</span>'; }
     const periodStr=dd?.period!=null?' · '+dd.period.toFixed(0)+'s period'+(dd.period>=14?' ⚠ long':dd.period>=10?' moderate':' short'):'';
     const bodyEffLine=r.eff?.swell!=null
-      ? '<div class="cond-detail">Effective at site: <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong> swell · <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong> wind'+periodStr+(dd?.swell!==undefined?' (raw: '+dd.swell.toFixed(2)+'m / '+dd.wind.toFixed(1)+'kt)':'')+'</div>'
+      ? '<div class="cond-detail">Effective at site: <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong>'+swellDirStr+' swell · <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong>'+windDirStr+' wind'+periodStr+(dd?.swell!==undefined?' (raw: '+dd.swell.toFixed(2)+'m / '+dd.wind.toFixed(1)+'kt)':'')+'</div>'
       : '';
     return (
       '<div class="site-card '+v+'" onclick="this.classList.toggle(\'open\')">'+
