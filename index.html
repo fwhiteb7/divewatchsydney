@@ -766,7 +766,7 @@ const SITES = [
   { id:'fairlight',          name:'Fairlight',              region:'Sydney Harbour',   lat:-33.7989, lng:151.2441, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:8,  driveMin:20, notes:'Easy harbour entry off Manly. Good fishlife, suits all levels. Protected in any wind.' },
   { id:'little-manly-point', name:'Little Manly Point',     region:'Sydney Harbour',   lat:-33.7965, lng:151.2356, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:10, driveMin:20, notes:'Steps entry into harbour. Weedy seadragons, nudibranchs. Full harbour shelter.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'}] },
   // Northern Beaches
-  { id:'shelly-beach-manly', name:'Shelly Beach (Manly)',   region:'Northern Beaches', lat:-33.7974, lng:151.2897, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W','SW','S','SE'], exposedDir:['NE','E'], depthMin:0,  depthMax:20, driveMin:25, notes:'Marine reserve. Reliable viz, prolific fishlife. Sheltered from southerlies and SE. Most exposed to NE/E swell (bay mouth opens NNE). McFadyen: southerlies fine up to 15-20kt.' },
+  { id:'shelly-beach-manly', name:'Shelly Beach (Manly)',   region:'Northern Beaches', lat:-33.7974, lng:151.2897, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W','SW','S','SE'], exposedDir:['NE','E'], depthMin:0,  depthMax:20, driveMin:25, notes:'Marine reserve. Reliable viz, prolific fishlife. Sheltered from southerlies and SE. Most exposed to NE/E swell (bay mouth opens NNE). McFadyen: southerlies fine up to 15-20kt.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Blue groper',icon:'🐟'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Cuttlefish',icon:'🦑'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Turtles',icon:'🐢'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'}] },
   { id:'long-reef',          name:'Long Reef',              region:'Northern Beaches', lat:-33.7370, lng:151.3188, entry:'shore', solo:false, buddyOnly:false, shelterDir:['W','NW','SW'],    exposedDir:['N','NE','E','SE','S'], depthMin:3,  depthMax:18, driveMin:35, notes:'Exposed headland. Needs light W-NW wind and small swell. Aquatic reserve. Not solo-friendly (surge, entry hazards). ⚠ Tidal rip at northern tip on spring ebb — partly current-driven, independent of swell conditions.' },
   // Eastern Suburbs
   { id:'shark-point',        name:'Shark Point (Clovelly)', region:'Eastern Suburbs',  lat:-33.9147, lng:151.2641, entry:'shore', solo:false, buddyOnly:false, shelterDir:['N','NW','W','SW'], exposedDir:['E','SE'],    depthMin:0,  depthMax:18, driveMin:30, notes:'⚠ NOT SOLO — surge and surge channels require a buddy; helicopter rescue in 2019. Seadragons, moray eels, occasional grey nurse sharks. Steps entry. Use lee side in E/SE swell. Strong W/NW offshore wind flattens seas here — McFadyen prime condition. ⚠ Seasonal closure Oct–Dec (grey nurse shark breeding — check NSW DPI). ⚠ LOW water only — surge too strong at high tide.', tideAdvice:'LOW water only — surge unmanageable near high', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Rock blackfish',icon:'🐟'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Pygmy pipehorses',icon:'🐠'}] },
@@ -1524,7 +1524,12 @@ function renderSites(){
     '<div style="font-size:.55rem;color:var(--muted);opacity:.6;margin-bottom:8px">N = north · C = centre · S = south · click to expand</div>'+
     featuredRanked.map(compactRow).join('');
 
-  const restCards=restRanked.map(({site,r,dd,km})=>{
+  const REGION_NCS={'Sydney Harbour':'N','Northern Beaches':'N','Central Coast':'N','Eastern Suburbs':'C','Botany / South':'S','Royal Nat Park':'S','Illawarra':'S','Kiama':'S'};
+  const NCS_META={N:{full:'NORTH',sub:'Sydney Harbour · Northern Beaches · Central Coast'},C:{full:'CENTRE',sub:'Eastern Suburbs'},S:{full:'SOUTH',sub:'Botany · Royal NP · Illawarra · Kiama'}};
+  const ncsGrouped={N:[],C:[],S:[]};
+  restRanked.forEach(e=>{const g=REGION_NCS[e.site.region]||'S';ncsGrouped[g].push(e);});
+
+  function buildSiteCard({site,r,dd,km}){
     const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site));
     const v=r.verdict.toLowerCase();
     const km_str=km<2?(km*1000).toFixed(0)+'m':km.toFixed(1)+'km';
@@ -1574,19 +1579,49 @@ function renderSites(){
         '</div>'+
       '</div>'
     );
-  }).join('');
+  }
+
+  function buildNCSSection(key){
+    const entries=ncsGrouped[key];
+    if(!entries.length) return '';
+    const cards=entries.map(buildSiteCard).join('');
+    const best=entries.some(e=>e.r.verdict==='GO')?'GO':entries.some(e=>e.r.verdict==='MAYBE')?'MAYBE':'NO';
+    const bc=best==='GO'?'var(--go)':best==='MAYBE'?'var(--maybe)':'rgba(255,68,68,.7)';
+    const meta=NCS_META[key];
+    const sid='ncs-'+key;
+    return '<div style="margin-top:14px">'+
+      '<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--rim);cursor:pointer;user-select:none" data-sid="'+sid+'" onclick="toggleNCSSection(this.dataset.sid,this)">'+
+        '<span style="font-size:.65rem;font-weight:700;color:var(--accent);background:rgba(0,255,224,.1);border:1px solid rgba(0,255,224,.3);border-radius:3px;padding:1px 7px;flex-shrink:0">'+key+'</span>'+
+        '<span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg);flex-shrink:0">'+meta.full+'</span>'+
+        '<span style="font-size:.54rem;color:var(--muted)">'+meta.sub+'</span>'+
+        '<span style="font-size:.58rem;color:var(--muted);margin-left:auto;flex-shrink:0">'+entries.length+' sites</span>'+
+        '<span style="font-size:.65rem;font-weight:700;color:'+bc+';margin-left:10px;flex-shrink:0">'+best+'</span>'+
+        '<span class="ncs-chev-'+key+'" style="font-size:.55rem;color:var(--muted);margin-left:7px;display:inline-block;transition:transform .25s;transform:rotate(-90deg)">▼</span>'+
+      '</div>'+
+      '<div id="'+sid+'" class="site-list" style="display:none">'+cards+'</div>'+
+    '</div>';
+  }
 
   document.getElementById('site-rest-area').innerHTML=
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;margin-bottom:6px">'+
+    '<div style="display:flex;align-items:center;margin-top:18px;margin-bottom:2px">'+
       '<div class="section-title" style="margin-top:0;margin-bottom:0">ALL SITES — '+fmtDate(d)+'</div>'+
-      '<button onclick="toggleAll(\'site-rest-area\')" style="background:none;border:1px solid var(--rim);color:var(--muted);font-family:\'Spline Sans Mono\',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:4px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--rim)\';this.style.color=\'var(--muted)\'">expand all</button>'+
     '</div>'+
-    '<div class="site-list">'+(restCards||'<div style="color:var(--muted);padding:12px" class="pulse">Fetching conditions…</div>')+'</div>';
+    buildNCSSection('N')+buildNCSSection('C')+buildNCSSection('S');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERACTIONS
 // ─────────────────────────────────────────────────────────────────────────────
+function toggleNCSSection(id,header){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const key=id.replace('ncs-','');
+  const chev=header.querySelector('.ncs-chev-'+key);
+  const hidden=el.style.display==='none';
+  el.style.display=hidden?'':'none';
+  if(chev) chev.style.transform=hidden?'':'rotate(-90deg)';
+}
+
 function toggleAll(containerId){
   const container = document.getElementById(containerId);
   if(!container) return;
