@@ -1480,7 +1480,7 @@ function renderSites(){
     return site?{site,r:{verdict:'NO',reason:'No data'},dd:null,km:haversine(baseCoords.lat,baseCoords.lng,site.lat,site.lng)}:null;
   }).filter(Boolean);
 
-  const restRanked=ranked.filter(x=>!FEATURED_IDS.includes(x.site.id));
+  const restRanked=ranked;
 
   function compactRow({site,r,dd,km}){
     const v=r.verdict;
