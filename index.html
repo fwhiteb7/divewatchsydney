@@ -1294,8 +1294,9 @@ function checkZoneFailures(){
 }
 
 async function geocodePostcode(pc){
+  if(!/^\d{4}$/.test(pc)) return;
   try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?postalcode='+pc+'&country=au&format=json&limit=1');
+    const r=await fetch('https://nominatim.openstreetmap.org/search?postalcode='+encodeURIComponent(pc)+'&country=au&format=json&limit=1');
     const d=await r.json();
     if(d.length){ baseCoords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)}; render(); }
   }catch(e){}
