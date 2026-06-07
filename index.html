@@ -722,7 +722,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 const PREFS = { maxSwell: 0.5, maxWind: 10, minTemp: 0 };
 const CEIL  = { swell: 2.5, wind: 28 };
 const DAYS  = 7, PER_VIEW = 1;
-let   winOffset = 0;
+let   winOffset = 1; // 0=yesterday, 1=today (default)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CALENDAR  (no personal calendar in public version)
@@ -796,8 +796,10 @@ let baseCoords = { lat:-33.8688, lng:151.2093 };  // Sydney CBD default
 // UTILITIES
 // ─────────────────────────────────────────────────────────────────────────────
 function iso(offsetDays=0){
-  const d = new Date();
-  d.setDate(d.getDate()+offsetDays);
+  // Use Sydney local date (not UTC) so the app always shows the correct day
+  const sydDate = new Date().toLocaleDateString('en-CA',{timeZone:'Australia/Sydney'});
+  const d = new Date(sydDate+'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate()+offsetDays);
   return d.toISOString().slice(0,10);
 }
 function fmtDate(s){
@@ -1068,7 +1070,7 @@ function wetsuit(temp){
 // DATA FETCHING
 // ─────────────────────────────────────────────────────────────────────────────
 async function fetchZone(zone, coords){
-  const start=iso(0), end=iso(DAYS-1);
+  const start=iso(-1), end=iso(DAYS-1);
   const {lat,lng}=coords;
   try{
     const [mr,wr]=await Promise.all([
@@ -1236,7 +1238,7 @@ async function geocodePostcode(pc){
 // ─────────────────────────────────────────────────────────────────────────────
 // RENDER
 // ─────────────────────────────────────────────────────────────────────────────
-function viewDates(){ return [iso(winOffset), iso(winOffset+1)]; }
+function viewDates(){ return [iso(winOffset-1), iso(winOffset)]; }
 
 function render(){
   renderTabs();
@@ -1249,11 +1251,12 @@ function renderTabs(){
   const el=document.getElementById('day-tabs');
   el.innerHTML='';
   for(let i=0;i<DAYS;i++){
-    const d=iso(i);
+    const d=iso(i-1);  // i=0→yesterday, i=1→today, i=2→tomorrow…
     const v=dayBestVerdict(d);
     const cal=CAL[d];
     const isActive=i>=winOffset&&i<winOffset+PER_VIEW;
-    const col=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'var(--muted)';
+    const verdictCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'var(--muted)';
+    const col=verdictCol;
     const hd = WX['Sydney Harbour']?.days?.find(x=>x.date===d)
              || WX['Botany / South']?.days?.find(x=>x.date===d);
     const miniCond = hd
@@ -1261,9 +1264,9 @@ function renderTabs(){
       : '';
 
     const t=document.createElement('div');
-    t.className='day-tab'+(isActive?' active':'')+(cal?.blocked?' blocked':'');
+    t.className='day-tab'+(isActive?' active':(i===0?' past':''))+(cal?.blocked?' blocked':'');
     t.onclick=()=>{ winOffset=i; render(); };
-    t.innerHTML='<span class="dn" style="color:'+col+'">'+dayLabel(d)+'</span><span class="dm">'+dayShort(d)+'</span>'+miniCond;
+    t.innerHTML='<span class="dn" style="color:'+col+';'+(i===0?'filter:saturate(.25) opacity(.7)':'')+'">'+dayLabel(d)+'</span><span class="dm">'+dayShort(d)+'</span>'+miniCond;
     el.appendChild(t);
   }
   document.getElementById('prev-btn').disabled=winOffset===0;
@@ -1271,7 +1274,8 @@ function renderTabs(){
 }
 
 function renderVerdict(){
-  const d=iso(winOffset);
+  const d=iso(winOffset-1);
+  const isPast=winOffset===0;
   const cal=CAL[d];
   let vc='no', vt='NO';
 
@@ -1322,6 +1326,7 @@ function renderVerdict(){
   const calBadge=cal?'<span class="cal-badge '+cal.type+'" style="margin-left:10px;vertical-align:middle;font-size:.62rem">'+cal.reason+'</span>':'';
 
   document.getElementById('verdict-area').innerHTML=
+    (isPast?'<div style="filter:saturate(.22) opacity(.75)">':'')+
     '<div class="verdict-band '+vc+'">'+
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
         '<div class="vl">'+vt+calBadge+'</div>'+
@@ -1329,7 +1334,7 @@ function renderVerdict(){
       '</div>'+
       condGrid+
       sitesBlock+
-    '</div>';
+    '</div>'+(isPast?'</div>':'')+'';
 }
 
 function renderTable(){ document.getElementById('sum-table-area').innerHTML=''; }
@@ -1350,7 +1355,7 @@ function rankSitesForDay(dateKey){
 }
 
 function renderSites(){
-  const d=iso(winOffset);
+  const d=iso(winOffset-1);
   const ranked=rankSitesForDay(d);
   const {window:diveWindow, tideNote} = bestDiveWindow(d);
 
