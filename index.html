@@ -499,11 +499,11 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
   </div>
   <div class="sl-group">
     <div class="sl-label">
-      SWELL LIMIT <span class="v" id="sv">0.5m</span>
+      SWELL LIMIT <span class="v" id="sv">1.0m</span>
     </div>
-    <input type="range" id="sl-swell" min="0.1" max="2.5" step="0.1" value="0.5">
+    <input type="range" id="sl-swell" min="0.1" max="2.5" step="0.1" value="1.0">
     <div class="sl-hint">
-      <span class="hi">ideal &lt;0.5m</span> &middot; MAYBE 0.5&ndash;0.8m
+      <span class="hi">ideal &lt;0.5m</span> &middot; MAYBE 0.5&ndash;1m
       <div class="sl-hint-sub"><span class="warn">rough &gt;1.0m &middot; ceiling 2.5m</span></div>
     </div>
   </div>
@@ -745,7 +745,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
-const PREFS = { maxSwell: 0.5, maxWind: 10, minTemp: 0 };
+const PREFS = { maxSwell: 1.0, maxWind: 10, minTemp: 0 };
 const CEIL  = { swell: 2.5, wind: 28 };
 const DAYS  = 7, PER_VIEW = 1;
 let   winOffset = 1; // 0=yesterday, 1=today (default)
@@ -910,7 +910,7 @@ function assess(site, dayData, prefs){
   }
 
   const swNO    = es > prefs.maxSwell;
-  const swMAYBE = !swNO && es > prefs.maxSwell * 0.8;
+  const swMAYBE = !swNO && es > prefs.maxSwell * 0.5;
 
   const wdNO    = ew > prefs.maxWind;
   const wdMAYBE = !wdNO && (ew > prefs.maxWind * 0.8 || (ew > 10 && ew <= 15 && prefs.maxWind >= 15));
@@ -1574,11 +1574,11 @@ function toggleAll(containerId){
 }
 
 function resetSliders(){
-  PREFS.maxSwell=0.5; PREFS.maxWind=10; PREFS.minTemp=0;
-  document.getElementById('sl-swell').value=0.5;
+  PREFS.maxSwell=1.0; PREFS.maxWind=10; PREFS.minTemp=0;
+  document.getElementById('sl-swell').value=1.0;
   document.getElementById('sl-wind').value=10;
   document.getElementById('sl-temp').value=0;
-  document.getElementById('sv').textContent='0.5m';
+  document.getElementById('sv').textContent='1.0m';
   document.getElementById('wv').textContent='10kt';
   document.getElementById('tv').textContent='none';
   document.getElementById('wetsuit-tag').style.display='none';
