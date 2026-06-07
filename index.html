@@ -554,9 +554,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 
 <!-- Day nav -->
 <div class="day-nav">
-  <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8249;</button>
   <div class="day-tabs" id="day-tabs"></div>
-  <button class="nav-btn" id="next-btn" onclick="navigate(1)">&#8250;</button>
 </div>
 
 <!-- Dynamic content -->
@@ -1324,8 +1322,6 @@ function renderTabs(){
     t.innerHTML='<span class="dn" style="color:'+col+';'+(i===0?'filter:saturate(.25) opacity(.7)':'')+'">'+dayLabel(d)+'</span><span class="dm">'+dayShort(d)+'</span>'+miniCond;
     el.appendChild(t);
   }
-  document.getElementById('prev-btn').disabled=winOffset===0;
-  document.getElementById('next-btn').disabled=winOffset>=DAYS-1;
 }
 
 function renderVerdict(){
