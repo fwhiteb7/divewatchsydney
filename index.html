@@ -1098,7 +1098,7 @@ async function fetchZone(zone, coords){
       const hi=i*24+6;
       const temps=(m.hourly.sea_surface_temperature||[]).slice(hi,hi+12).filter(v=>v!=null);
       const temp=temps.length ? temps.reduce((a,b)=>a+b,0)/temps.length : null;
-      const swell = (m.daily.swell_wave_height_max?.[i] ?? m.daily.wave_height_max[i]) || 0;
+      const swell = (m.daily.wave_height_max?.[i] ?? m.daily.swell_wave_height_max?.[i]) || 0;
       const swellDir = m.daily.swell_wave_direction_dominant?.[i] ?? m.daily.wave_direction_dominant[i];
       return {
         date, swell, swellDir,
