@@ -128,18 +128,17 @@ body::after {
   background: var(--deep); border: 1px solid var(--rim); border-radius: 8px;
 }
 .limits-head {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 8px;
 }
-.limits-title { color: var(--go); font-family: 'Spline Sans Mono', monospace; font-size: .65rem; letter-spacing: .12em; }
-.limits-fixed { color: var(--muted); font-family: 'Spline Sans Mono', monospace; font-size: .56rem; letter-spacing: .1em; }
+.limits-title { color: #57b88c; font-family: 'Spline Sans Mono', monospace; font-size: .65rem; letter-spacing: .12em; }
 .limits-row {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
   font-family: 'Spline Sans Mono', monospace;
 }
 .limits-sep { color: #1c3a30; }
 .limit { font-size: .68rem; }
 .limit .lab { color: var(--muted); letter-spacing: .04em; }
-.limit .go  { color: var(--go); font-weight: 600; text-shadow: 0 0 7px rgba(0,255,159,.4); }
+.limit .go  { color: #57b88c; font-weight: 600; }
 .limit .mid { color: var(--maybe); }
 .limit .bad { color: var(--no); }
 
@@ -336,6 +335,28 @@ body::after {
 .card-body .cond-detail {
   font-size: .68rem; margin-bottom: 5px; color: var(--text);
 }
+.eff-info {
+  display: inline-block; width: 12px; height: 12px; line-height: 11px; text-align: center;
+  border: 1px solid var(--muted); border-radius: 50%; color: var(--muted);
+  font-size: .52rem; font-family: 'Spline Sans Mono', monospace; font-style: italic;
+  cursor: help; position: relative; margin: 0 3px; vertical-align: middle;
+}
+.eff-info::after {
+  content: attr(data-tip);
+  position: absolute; left: 0; bottom: calc(100% + 7px);
+  width: 210px; background: var(--surface); border: 1px solid var(--rim); border-radius: 6px;
+  padding: 7px 9px; font-size: .6rem; line-height: 1.5; color: var(--text);
+  font-style: normal; letter-spacing: 0; text-align: left;
+  box-shadow: 0 4px 16px rgba(0,0,0,.55); z-index: 60;
+  opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none;
+}
+.eff-info:hover::after { opacity: 1; visibility: visible; }
+.feat-row .feat-chev {
+  display: inline-block; flex-shrink: 0; color: var(--muted);
+  font-size: .6rem; transition: transform .2s; opacity: .7;
+}
+.feat-row:hover .feat-chev { color: var(--accent); opacity: 1; }
+.feat-row.open .feat-chev { transform: rotate(180deg); }
 
 /* ── Divider ── */
 hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity: .5; }
@@ -482,11 +503,11 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
     <span class="limits-title">DIVE THRESHOLDS</span>
   </div>
   <div class="limits-row">
-    <span class="limit"><span class="lab">SWELL</span> <span class="go">&lt;0.5m</span> <span class="mid">0.5&ndash;1m</span> <span class="bad">&gt;1.0m</span></span>
+    <span class="limit"><span class="lab">SWELL</span> <span class="go">Go &lt;0.5m</span> <span class="mid">Maybe 0.5&ndash;1m</span> <span class="bad">No &gt;1.0m</span></span>
     <span class="limits-sep">|</span>
-    <span class="limit"><span class="lab">WIND</span> <span class="go">&lt;10kt</span> <span class="mid">10&ndash;15kt</span> <span class="bad">&gt;15kt</span></span>
+    <span class="limit"><span class="lab">WIND</span> <span class="go">Go &lt;10kt</span> <span class="mid">Maybe 10&ndash;15kt</span> <span class="bad">No &gt;15kt</span></span>
     <span class="limits-sep">|</span>
-    <span class="limit"><span class="lab">TEMP</span> <span class="go">&gt;19&deg; 5mm</span> <span class="mid">&le;18&deg; 7mm/DrySuit</span></span>
+    <span class="limit"><span class="lab">TEMP</span> <span class="go">Go &gt;19&deg;C 5mm</span> <span class="mid">&le;18&deg;C 7mm/DrySuit</span></span>
   </div>
   <div id="zone-fail-banner" style="display:none;background:rgba(255,68,102,.12);border:1px solid rgba(255,68,102,.3);border-radius:8px;padding:10px 16px;font-size:.75rem;color:var(--no);margin-top:10px;"></div>
 </div>
@@ -1422,14 +1443,16 @@ function renderSites(){
   // best-window is computed per site below — each region uses its own tide station
 
   const FEATURED_IDS=[
-    'shelly-beach-manly','long-reef',
+    'shelly-beach-manly',
     'shark-point','gordons-bay',
-    'bare-island','bushrangers-bay'
+    'bare-island','inscription-point',
+    'bushrangers-bay'
   ];
   const FEATURED_LABELS={
-    'shelly-beach-manly':'N','long-reef':'N',
-    'shark-point':'C','gordons-bay':'C',
-    'bare-island':'S','bushrangers-bay':'S'
+    'shelly-beach-manly':'N',
+    'shark-point':'E','gordons-bay':'E',
+    'bare-island':'S','inscription-point':'S',
+    'bushrangers-bay':'IL'
   };
 
   const featuredRanked=FEATURED_IDS.map(id=>{
@@ -1466,13 +1489,14 @@ function renderSites(){
         (activeWildlife.length?'<br>'+activeWildlife.map(w=>w.icon+' '+w.label).join(' · '):'')+
         '<br><span style="opacity:.55">'+site.region+' · '+km.toFixed(1)+'km · '+site.driveMin+'min drive</span>'+
       '</div>';
-    return '<div style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
+    return '<div class="feat-row" style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
       '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
         '<span style="width:7px;height:7px;border-radius:50%;background:'+dotCol+';flex-shrink:0"></span>'+
         '<span style="font-size:.75rem;flex:1">'+site.name+'</span>'+
         (activeWildlife.length?'<span style="font-size:.7rem;margin-right:2px">'+activeWildlife.map(w=>w.icon).join('')+'</span>':'')+
         (regionLabel?'<span style="font-size:.55rem;color:var(--muted);background:rgba(255,255,255,.07);border-radius:3px;padding:1px 4px;margin-right:3px">'+regionLabel+'</span>':'')+
         '<span style="font-size:.65rem;font-weight:600;color:'+textCol+'">'+v+'</span>'+
+        '<span class="feat-chev">▾</span>'+
       '</div>'+
       '<div class="sd" style="display:none">'+detailHtml+'</div>'+
     '</div>';
@@ -1480,13 +1504,18 @@ function renderSites(){
 
   document.getElementById('site-list-area').innerHTML=
     '<div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px">Featured sites</div>'+
-    '<div style="font-size:.55rem;color:var(--muted);opacity:.6;margin-bottom:8px">N = north · C = centre · S = south · click to expand</div>'+
+    '<div style="font-size:.55rem;color:var(--muted);opacity:.6;margin-bottom:8px">N = north · E = eastern · S = south · IL = illawarra</div>'+
     featuredRanked.map(compactRow).join('');
 
-  const REGION_NCS={'Sydney Harbour':'N','Northern Beaches':'N','Central Coast':'N','Eastern Suburbs':'C','Botany / South':'S','Royal Nat Park':'S','Illawarra':'S','Kiama':'S'};
-  const NCS_META={N:{full:'NORTH',sub:'Sydney Harbour · Northern Beaches · Central Coast'},C:{full:'CENTRE',sub:'Eastern Suburbs'},S:{full:'SOUTH',sub:'Botany · Royal NP · Illawarra · Kiama'}};
-  const ncsGrouped={N:[],C:[],S:[]};
-  restRanked.forEach(e=>{const g=REGION_NCS[e.site.region]||'S';ncsGrouped[g].push(e);});
+  const REGION_NCS={'Sydney Harbour':'NB','Northern Beaches':'NB','Central Coast':'NB','Eastern Suburbs':'EB','Botany / South':'EB','Royal Nat Park':'SS','Kiama':'IL','Illawarra':'IL'};
+  const NCS_META={
+    NB:{full:'NORTHERN BEACHES & SYDNEY HARBOUR',sub:'Sydney Harbour · Northern Beaches · Central Coast'},
+    EB:{full:'EASTERN SUBURBS & BOTANY BAY',sub:'Eastern Suburbs · Botany Bay'},
+    SS:{full:'SOUTHERN SYDNEY',sub:'Royal NP · Cronulla / Port Hacking'},
+    IL:{full:'ILLAWARRA',sub:'Illawarra · Kiama'}
+  };
+  const ncsGrouped={NB:[],EB:[],SS:[],IL:[]};
+  restRanked.forEach(e=>{const g=REGION_NCS[e.site.region]||'SS';ncsGrouped[g].push(e);});
 
   function buildSiteCard({site,r,dd,km}){
     const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site));
@@ -1513,7 +1542,7 @@ function renderSites(){
     if(dd?.temp){ const ws=wetsuitRec(dd.temp); condLine2='<span style="color:'+(ws?.good?'var(--go)':'var(--muted)')+'">'+dd.temp.toFixed(1)+'°C</span>'; }
     const periodStr=dd?.period!=null?' · '+dd.period.toFixed(0)+'s period'+(dd.period>=14?' ⚠ long':dd.period>=10?' moderate':' short'):'';
     const bodyEffLine=r.eff?.swell!=null
-      ? '<div class="cond-detail">Effective at site: <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong>'+swellDirStr+' swell · <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong>'+windDirStr+' wind'+periodStr+(dd?.swell!==undefined?' (raw: '+dd.swell.toFixed(2)+'m / '+dd.wind.toFixed(1)+'kt)':'')+'</div>'
+      ? '<div class="cond-detail">Forecast: <strong>'+dd.swell.toFixed(2)+'m</strong>'+swellDirStr+' swell · <strong>'+dd.wind.toFixed(1)+'kt</strong>'+windDirStr+' wind'+periodStr+' <span style="color:var(--muted)">(Effective here<span class="eff-info" data-tip="Effective = the forecast adjusted for this site\'s shelter and the swell period. That\'s the number the verdict is based on." title="Effective = the forecast adjusted for this site\'s shelter and the swell period. That\'s the number the verdict is based on.">i</span> <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong> / <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong>)</span></div>'
       : '';
     return (
       '<div class="site-card '+v+'" onclick="this.classList.toggle(\'open\')">'+
@@ -1565,7 +1594,7 @@ function renderSites(){
     '<div style="display:flex;align-items:center;margin-top:18px;margin-bottom:2px">'+
       '<div class="section-title" style="margin-top:0;margin-bottom:0">ALL SITES — '+fmtDate(d)+'</div>'+
     '</div>'+
-    buildNCSSection('N')+buildNCSSection('C')+buildNCSSection('S');
+    buildNCSSection('NB')+buildNCSSection('EB')+buildNCSSection('SS')+buildNCSSection('IL');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
