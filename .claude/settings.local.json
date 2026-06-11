@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless=new --incognito --disable-gpu --hide-scrollbars --force-device-scale-factor=2 --window-size=320,560 --virtual-time-budget=6000 --screenshot=mobile-narrow4.png \"file://$\\(pwd\\)/index.html?v=4\")",
+      "Bash(\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless=new --incognito --disable-gpu --hide-scrollbars --force-device-scale-factor=2 --window-size=320,560 --virtual-time-budget=6000 --dump-dom --screenshot=/tmp/diag.png \"file:///tmp/diag.html\")",
+      "Read(//private/tmp/**)",
+      "Bash(node shot.mjs /Users/frederickwhite/Claude/divingsydney/index.html 320 /tmp/m320.png)",
+      "Bash(node shot.mjs /Users/frederickwhite/Claude/divingsydney/index.html 375 /tmp/m375.png)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Read(//Users/frederickwhite/Documents/Claude/Projects/Fred's NSW Dive Watch/**)",
+      "Bash(git push *)",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git --no-pager diff)"
+    ]
+  }
+}

@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DIVEWATCHSYDNEY · NSW Dive Conditions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,900;1,400&family=Spline+Sans+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1083,35 +1085,77 @@ function vizStr(swell,wind){
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA FETCHING
 // ─────────────────────────────────────────────────────────────────────────────
-async function fetchZone(zone, coords){
+async function fetchZone(zone, coords, onDone){
   const start=iso(-1), end=iso(DAYS-1);
   const {lat,lng}=coords;
+  const cacheKey='dws_h3_'+zone+'_'+start; // h3 = hourly v3
   try{
+    const cached=sessionStorage.getItem(cacheKey);
+    if(cached){
+      const {ts,days}=JSON.parse(cached);
+      if(Date.now()-ts < 30*60*1000){ WX[zone]={days}; onDone&&onDone(); return; }
+    }
     const [mr,wr]=await Promise.all([
-      fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lng+'&daily=wave_height_max,wave_direction_dominant,wave_period_max,swell_wave_height_max,swell_wave_direction_dominant,swell_wave_period_max&hourly=sea_surface_temperature&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end),
-      fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily=wind_speed_10m_max,wind_direction_10m_dominant&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end+'&wind_speed_unit=kn')
+      fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lng+
+        '&hourly=swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature'+
+        '&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end),
+      fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+
+        '&hourly=wind_speed_10m,wind_direction_10m'+
+        '&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end+
+        '&wind_speed_unit=kn')
     ]);
     if(!mr.ok) throw new Error('Marine API '+mr.status);
     if(!wr.ok)  throw new Error('Wind API '+wr.status);
     const m=await mr.json(), w=await wr.json();
-    const days=m.daily.time.map((date,i)=>{
-      const hi=i*24+6;
-      const temps=(m.hourly.sea_surface_temperature||[]).slice(hi,hi+12).filter(v=>v!=null);
-      const temp=temps.length ? temps.reduce((a,b)=>a+b,0)/temps.length : null;
-      const swell = (m.daily.wave_height_max?.[i] ?? m.daily.swell_wave_height_max?.[i]) || 0;
-      const swellDir = m.daily.swell_wave_direction_dominant?.[i] ?? m.daily.wave_direction_dominant[i];
+
+    // Group hourly readings by date
+    const htimes=m.hourly.time;
+    const byDate={};
+    for(let i=0;i<htimes.length;i++){
+      const date=htimes[i].slice(0,10);
+      const hour=parseInt(htimes[i].slice(11,13));
+      if(!byDate[date]) byDate[date]=[];
+      byDate[date].push({
+        hour,
+        swell:   m.hourly.swell_wave_height?.[i]    ?? 0,
+        swellDir:m.hourly.swell_wave_direction?.[i] ?? null,
+        period:  m.hourly.swell_wave_period?.[i]    ?? null,
+        wind:    w.hourly.wind_speed_10m?.[i]        ?? 0,
+        windDir: w.hourly.wind_direction_10m?.[i]    ?? null,
+        temp:    m.hourly.sea_surface_temperature?.[i]??null,
+      });
+    }
+
+    const days=Object.entries(byDate).map(([date,hrs])=>{
+      // Morning dive window: 7–10am — pick hour with lowest swell
+      const morning=hrs.filter(h=>h.hour>=7&&h.hour<=10);
+      const win=morning.length
+        ? morning.reduce((best,h)=>h.swell<best.swell?h:best, morning[0])
+        : (hrs.find(h=>h.hour===8)||hrs[0]||{swell:0,wind:0,swellDir:null,windDir:null,period:null,temp:null});
+
+      const temp=(hrs.find(h=>h.hour===8)||hrs[0])?.temp??null;
+      const swellMax=Math.max(...hrs.map(h=>h.swell));
+      const windMax =Math.max(...hrs.map(h=>h.wind));
+
       return {
-        date, swell, swellDir,
-        period: m.daily.swell_wave_period_max?.[i] ?? m.daily.wave_period_max?.[i] ?? null,
-        wind:   w.daily.wind_speed_10m_max[i]||0,
-        windDir: w.daily.wind_direction_10m_dominant[i],
-        temp
+        date,
+        // Morning window summary — used by assess(), condGrid, verdict
+        swell:win.swell, swellDir:win.swellDir, period:win.period,
+        wind:win.wind, windDir:win.windDir, temp,
+        // Full-day context
+        swellMax, windMax,
+        // All hours for sparkline
+        hours:hrs.map(h=>({hour:h.hour,swell:h.swell,wind:h.wind,period:h.period,swellDir:h.swellDir,windDir:h.windDir}))
       };
     });
+
     WX[zone]={days};
+    try{ sessionStorage.setItem(cacheKey, JSON.stringify({ts:Date.now(),days})); }catch(_){}
+    onDone&&onDone();
   }catch(e){
     console.warn('fetchZone failed',zone,e);
     WX[zone]={days:[], failed:true};
+    onDone&&onDone();
   }
 }
 
@@ -1236,6 +1280,67 @@ function bestDiveWindow(dateKey, station='fort-denison'){
   return { window:fmt(winStart)+'–'+fmt(winEnd), tideNote };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HOURLY SPARKLINE  (5am–8pm, swell bars + wind dots)
+// ─────────────────────────────────────────────────────────────────────────────
+function hourlySparkline(dd){
+  if(!dd?.hours?.length) return '';
+  const SHOW_FROM=5, SHOW_TO=20;
+  const hrs=dd.hours.filter(h=>h.hour>=SHOW_FROM&&h.hour<=SHOW_TO);
+  if(!hrs.length) return '';
+
+  const W=320, H=42, PAD=2;
+  const barW=Math.floor(W/hrs.length)-1;
+  const swellCap=Math.max(2.5, dd.swellMax||1);
+  const windCap =Math.max(25,  dd.windMax ||10);
+
+  // Colour helpers — match condColor thresholds
+  const sc=s=>s>PREFS.maxSwell?'#ff3355':s>PREFS.maxSwell*0.5?'#ffdd00':'#00ff88';
+  const wc=w=>w>PREFS.maxWind ?'#ff3355':w>PREFS.maxWind*0.8 ?'#ffdd00':'#00ff88';
+
+  let bars='', labels='';
+  hrs.forEach((h,i)=>{
+    const x=PAD+i*(barW+1);
+    const sh=Math.max(2,Math.round((h.swell/swellCap)*(H-10)));
+    const wh=Math.max(1,Math.round((h.wind /windCap )*(H-10)));
+    // Swell bar
+    bars+=`<rect x="${x}" y="${H-sh-4}" width="${barW}" height="${sh}" rx="1" fill="${sc(h.swell)}" opacity="0.75"/>`;
+    // Wind line dot
+    bars+=`<circle cx="${x+barW/2}" cy="${H-wh-4}" r="1.5" fill="${wc(h.wind)}" opacity="0.9"/>`;
+    // Hour labels every 3h
+    if(h.hour%3===0){
+      const lbl=h.hour===0?'12a':h.hour<12?h.hour+'a':h.hour===12?'12p':(h.hour-12)+'p';
+      labels+=`<text x="${x+barW/2}" y="${H}" text-anchor="middle" font-size="7" fill="#2a6858">${lbl}</text>`;
+    }
+  });
+
+  // Dive window highlight (7-10am)
+  const diveStart=hrs.findIndex(h=>h.hour===7);
+  const diveEnd  =hrs.findIndex(h=>h.hour===10);
+  let highlight='';
+  if(diveStart>=0&&diveEnd>=0){
+    const x0=PAD+diveStart*(barW+1);
+    const x1=PAD+(diveEnd+1)*(barW+1);
+    highlight=`<rect x="${x0}" y="0" width="${x1-x0}" height="${H-6}" rx="2" fill="rgba(0,255,200,0.07)" stroke="rgba(0,255,200,0.2)" stroke-width="0.5"/>`;
+  }
+
+  // Build warning annotation
+  let buildNote='';
+  if(dd.swellMax && dd.swellMax > dd.swell + 0.4){
+    buildNote=`<div style="font-size:.6rem;color:#ffdd00;margin-top:3px">⬆ builds to ${dd.swellMax.toFixed(1)}m later · dive early</div>`;
+  } else if(dd.windMax && dd.windMax > dd.wind + 5){
+    buildNote=`<div style="font-size:.6rem;color:#ffdd00;margin-top:3px">⬆ wind builds to ${dd.windMax.toFixed(0)}kt later · dive early</div>`;
+  }
+
+  return `<div style="grid-column:1/-1;margin-top:4px">`+
+    `<div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Hourly forecast <span style="color:#2a6858;font-size:.55rem">(swell bars · wind dots · <span style="color:rgba(0,255,200,0.6)">▮</span> dive window)</span></div>`+
+    `<svg viewBox="0 0 ${W} ${H+2}" width="100%" height="${H+2}" style="display:block;overflow:visible">`+
+      highlight+bars+labels+
+    `</svg>`+
+    buildNote+
+  `</div>`;
+}
+
 async function fetchRain(){
   try{
     const start=iso(-4), end=iso(0);
@@ -1252,10 +1357,9 @@ async function fetchAll(){
   render();
   loadBoMTides();
   updateTideNotice();
-  await Promise.all([
-    ...Object.entries(ZONES).map(([z,c])=>fetchZone(z,c)),
-    fetchRain()
-  ]);
+  // Progressive: render after each zone resolves so data appears as it arrives
+  const zonePromises = Object.entries(ZONES).map(([z,c])=>fetchZone(z,c,()=>{ render(); updateNowStrip(); }));
+  await Promise.all([...zonePromises, fetchRain()]);
   render();
   updateNowStrip();
   const allFailed=Object.values(WX).every(z=>z.error||!z.days?.length);
@@ -1321,16 +1425,21 @@ function renderVerdict(){
   const isPast=winOffset===0;
   const cal=CAL[d];
   let vc='no', vt='NO';
+  let bestSite=null, bestDd=null, bestRes={verdict:'NO'};
+  let harbourOnlyGO=false;
 
   if(!cal?.blocked){
-    let bestRes={verdict:'NO'};
-    let harbourOnlyGO=false;
     for(const site of SITES){
       const dd=WX[site.region]?.days?.find(x=>x.date===d);
       const r=assess(site,dd,PREFS);
-      if(r.verdict==='GO'&&bestRes.verdict!=='GO')         { bestRes=r; harbourOnlyGO=(site.shelterDir==='harbour'); }
-      else if(r.verdict==='GO'&&bestRes.verdict==='GO')    { if(site.shelterDir!=='harbour') harbourOnlyGO=false; }
-      else if(r.verdict==='MAYBE'&&bestRes.verdict==='NO') { bestRes=r; }
+      if(r.verdict==='GO'&&bestRes.verdict!=='GO'){
+        bestRes=r; bestSite=site; bestDd=dd;
+        harbourOnlyGO=(site.shelterDir==='harbour');
+      } else if(r.verdict==='GO'&&bestRes.verdict==='GO'){
+        if(site.shelterDir!=='harbour') harbourOnlyGO=false;
+      } else if(r.verdict==='MAYBE'&&bestRes.verdict==='NO'){
+        bestRes=r; bestSite=site; bestDd=dd;
+      }
     }
     const loading=Object.keys(WX).length<Object.keys(ZONES).length;
     if(loading&&bestRes.verdict==='NO'){ vc='maybe'; vt='…'; }
@@ -1341,40 +1450,59 @@ function renderVerdict(){
     }
   }
 
-  const hd=WX['Sydney Harbour']?.days?.find(x=>x.date===d)||WX['Botany / South']?.days?.find(x=>x.date===d);
+  const calBadge=cal?'<span class="cal-badge '+cal.type+'" style="margin-left:10px;vertical-align:middle;font-size:.62rem">'+cal.reason+'</span>':'';
+
+  // Use best site's data for the hero card; fall back to Sydney Harbour zone if no best site
+  const hd=bestDd||WX['Sydney Harbour']?.days?.find(x=>x.date===d)||WX['Botany / South']?.days?.find(x=>x.date===d);
+  // Use effective conditions for display if available, otherwise raw
+  const dispSwell = bestRes.eff?.swell!=null ? bestRes.eff.swell : hd?.swell;
+  const dispWind  = bestRes.eff?.wind!=null  ? bestRes.eff.wind  : hd?.wind;
+
   const periodStr=hd?.period!=null
     ? hd.period.toFixed(0)+'s'+(hd.period>=14?' ⚠ long':hd.period>=10?' mod':' short')
     : '';
 
-  const {window:diveWindow, tideNote} = bestDiveWindow(d);
+  const tideStation = bestSite ? stationFor(bestSite) : 'fort-denison';
+  const {window:diveWindow, tideNote} = bestDiveWindow(d, tideStation);
+
+  // Best site hero row
+  const km = bestSite ? haversine(baseCoords.lat,baseCoords.lng,bestSite.lat,bestSite.lng) : null;
+  const kmStr = km!=null ? (km<2?(km*1000).toFixed(0)+'m':km.toFixed(1)+'km') : '';
+  const siteHero = bestSite && !cal?.blocked
+    ? '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08)">'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:.04em;color:var(--accent)">'+bestSite.name+'</div>'+
+        '<div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+bestSite.region+' · '+kmStr+' · '+bestSite.driveMin+'min drive'+(bestSite.entry==='boat'?' · <span style="color:#ff9040">BOAT</span>':'')+' · best site for this day</div>'+
+      '</div>'
+    : '';
+
   const condGrid=hd&&!cal?.blocked?
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:6px">'+
-      '<div style="white-space:nowrap"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Swell (raw)</div>'+
-        '<span style="color:'+condColor(hd.swell,PREFS.maxSwell)+'">'+hd.swell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.6rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(hd.swellDir)+'</span>':'')+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:0;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:6px">'+
+      '<div style="white-space:nowrap"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Swell <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
+        '<span style="color:'+condColor(dispSwell,PREFS.maxSwell)+'">'+dispSwell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.6rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(hd.swellDir)+'</span>':'')+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
       '</div>'+
-      '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Wind</div>'+
-        '<span style="color:'+condColor(hd.wind,PREFS.maxWind)+'">'+hd.wind.toFixed(0)+'kt '+(deg2cp(hd.windDir)||'')+'</span></div>'+
+      '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Wind <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
+        '<span style="color:'+condColor(dispWind,PREFS.maxWind)+'">'+dispWind.toFixed(0)+'kt '+(deg2cp(hd.windDir)||'')+'</span></div>'+
       (hd.temp?'<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Water</div>'+
         '<span style="color:'+(wetsuitRec(hd.temp)?.good?'var(--go)':'var(--muted)')+'">'+hd.temp.toFixed(1)+'°C</span> <span style="font-size:.6rem;color:var(--muted)">(typ.'+SYDNEY_TEMPS[new Date().getMonth()].toFixed(1)+'°C)</span></div>':'')+
       '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Viz (est)</div>'+
-        '<span>'+vizStr(hd.swell,hd.wind)+'</span></div>'+
+        '<span>'+vizStr(dispSwell,dispWind)+'</span></div>'+
       '<div style="grid-column:1/-1"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Best window'+(tideNote?' (tide)':'')+'</div>'+
         '<span style="color:var(--accent)">'+diveWindow+'</span>'+(tideNote?'<span style="font-size:.6rem;color:var(--muted);margin-left:8px">'+tideNote+'</span>':'')+
       '</div>'+
+      hourlySparkline(hd)+
     '</div>':'';
 
   const sitesBlock=vt==='NO'&&!cal?.blocked?'<div style="color:var(--muted);margin-top:12px;font-size:.72rem">No sites within GO bar for this day.</div>':
      cal?.blocked?'<div style="color:var(--muted);margin-top:10px;font-size:.72rem">'+cal.reason+'</div>':'';
 
-  const calBadge=cal?'<span class="cal-badge '+cal.type+'" style="margin-left:10px;vertical-align:middle;font-size:.62rem">'+cal.reason+'</span>':'';
-
   document.getElementById('verdict-area').innerHTML=
     (isPast?'<div style="filter:saturate(.22) opacity(.75)">':'')+
     '<div class="verdict-band '+vc+'">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">'+
         '<div class="vl">'+vt+calBadge+'</div>'+
         '<div class="seasonal-badge" style="flex:1;min-width:180px;margin:0;align-self:center">'+seasonalContext()+'</div>'+
       '</div>'+
+      siteHero+
       condGrid+
       sitesBlock+
     '</div>'+(isPast?'</div>':'')+'';
@@ -1488,6 +1616,7 @@ function renderSites(){
         rainWarn(site)+vizTideNote(site,true)+
         (activeWildlife.length?'<br>'+activeWildlife.map(w=>w.icon+' '+w.label).join(' · '):'')+
         '<br><span style="opacity:.55">'+site.region+' · '+km.toFixed(1)+'km · '+site.driveMin+'min drive</span>'+
+        hourlySparkline(dd)+
       '</div>';
     return '<div class="feat-row" style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
       '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
@@ -1542,7 +1671,9 @@ function renderSites(){
     if(dd?.temp){ const ws=wetsuitRec(dd.temp); condLine2='<span style="color:'+(ws?.good?'var(--go)':'var(--muted)')+'">'+dd.temp.toFixed(1)+'°C</span>'; }
     const periodStr=dd?.period!=null?' · '+dd.period.toFixed(0)+'s period'+(dd.period>=14?' ⚠ long':dd.period>=10?' moderate':' short'):'';
     const bodyEffLine=r.eff?.swell!=null
-      ? '<div class="cond-detail">Forecast: <strong>'+dd.swell.toFixed(2)+'m</strong>'+swellDirStr+' swell · <strong>'+dd.wind.toFixed(1)+'kt</strong>'+windDirStr+' wind'+periodStr+' <span style="color:var(--muted)">(Effective here<span class="eff-info" data-tip="Effective = the forecast adjusted for this site\'s shelter and the swell period. That\'s the number the verdict is based on." title="Effective = the forecast adjusted for this site\'s shelter and the swell period. That\'s the number the verdict is based on.">i</span> <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong>'+swellDirStr+' / <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong>)</span></div>'
+      ? '<div class="cond-detail">Effective at site<span class="eff-info" data-tip="Effective = zone forecast adjusted for this site\'s shelter, exposure direction and swell period." title="Effective = zone forecast adjusted for this site\'s shelter, exposure direction and swell period.">i</span>: <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong>'+swellDirStr+(dd?.period!=null?' · <strong>'+dd.period.toFixed(0)+'s</strong> period'+(dd.period>=14?' ⚠ long':dd.period>=10?' moderate':' short'):'')
+        +' · <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong>'+windDirStr
+        +' <span style="opacity:.45"> (Forecast Zone '+site.region+': '+dd.swell.toFixed(2)+'m'+(dd.swellDir!=null?' '+deg2cp(dd.swellDir):'')+( dd?.period!=null?' · '+dd.period.toFixed(0)+'s':'')+' · '+dd.wind.toFixed(1)+'kt'+(dd.windDir!=null?' '+deg2cp(dd.windDir):'')+') </span></div>'
       : '';
     return (
       '<div class="site-card '+v+'" onclick="this.classList.toggle(\'open\')">'+
@@ -1563,7 +1694,7 @@ function renderSites(){
           '<span style="opacity:.6">Depth: '+site.depthMin+'–'+site.depthMax+'m · Entry: '+site.entry+(site.buddyOnly?' · ⚠ BUDDY REQUIRED':'')+'</span>'+
           '<div style="margin-top:6px;font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
           (site.tideAdvice?'<div class="tide-advice">🌊 Tide: '+site.tideAdvice+'</div>':'')+
-          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+
+          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+hourlySparkline(dd)+
         '</div>'+
       '</div>'
     );
