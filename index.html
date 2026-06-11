@@ -1225,117 +1225,223 @@ function updateTideNotice(){
   el.innerHTML='⚠ Embedded BoM tide tables run through '+end+'. Beyond that, best-window times fall back to a default and are approximate — refresh the tide data.';
 }
 
-function bestDiveWindow(dateKey, station='fort-denison'){
-  const exs = TIDES[station]?.[dateKey];
-  if(!exs||!exs.length) return {window:'7–9am', tideNote:''};
-  const highs = exs.filter(e=>e.type==='High');
-  if(!highs.length) return {window:'7–9am', tideNote:''};
-
-  const sydHour = dt => {
-    const s = dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});
-    const [h,m] = s.split(':').map(Number);
-    return h + m/60;
-  };
-
-  // Prefer a high whose 90-min lead window starts at ≥6am (i.e. high ≥ 7:30am)
-  const reasonableHighs = highs.filter(h => { const hr=sydHour(h.dt); return hr>=7.5 && hr<=19; });
-  const daytimeHighs    = highs.filter(h => { const hr=sydHour(h.dt); return hr>=5   && hr<=19; });
-
-  const targetHigh = reasonableHighs.find(h => sydHour(h.dt) <= 13.5)  // morning reasonable
-                  || reasonableHighs[0]                                   // afternoon reasonable
-                  || daytimeHighs[0]                                      // pre-dawn fallback
-                  || null;
-
-  if(!targetHigh){
-    const nightHigh = highs.reduce((best, h) => {
-      const hr = sydHour(h.dt);
-      const score = Math.abs(hr - 21);
-      return (!best || score < Math.abs(sydHour(best.dt) - 21)) ? h : best;
-    }, null);
-    const lows = exs.filter(e=>e.type==='Low');
-    const tideNote = highs.map(h=>'↑ high '+h.timeStr+' ('+h.height.toFixed(1)+'m)').join(' · ')
-      + (lows[0]?' · ↓ low '+lows[0].timeStr+' ('+lows[0].height.toFixed(1)+'m)':'');
-    if(nightHigh){
-      const winStart = new Date(nightHigh.dt.getTime() - 90*60000);
-      const winEnd   = new Date(nightHigh.dt.getTime() + 60*60000);
-      const fmt = dt => dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'numeric',minute:'2-digit',hour12:true})
-                          .replace(':00','').toLowerCase().replace(' ','');
-      return { window:'🌙 night dive '+fmt(winStart)+'–'+fmt(winEnd), tideNote };
-    }
-    return { window:'7–9am', tideNote };
-  }
-
-  let winStart = new Date(targetHigh.dt.getTime() - 90*60000);
-  const winEnd = new Date(targetHigh.dt.getTime() + 60*60000);
-
-  // Never suggest a window before 6am — clamp if the high is very early morning
-  const startHr = sydHour(winStart);
-  if(startHr < 6) winStart = new Date(winStart.getTime() + (6 - startHr) * 3600000);
-
+function bestDiveWindow(dateKey, station='fort-denison', dd=null){
+  // fmt helper — shared
   const fmt = dt => dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'numeric',minute:'2-digit',hour12:true})
                       .replace(':00','').toLowerCase().replace(' ','');
-  const lows = exs.filter(e=>e.type==='Low');
-  const tideNote = '↑ high '+targetHigh.timeStr+' ('+targetHigh.height.toFixed(1)+'m)'
-    + (lows[0]?' · ↓ low '+lows[0].timeStr+' ('+lows[0].height.toFixed(1)+'m)':'');
-  return { window:fmt(winStart)+'–'+fmt(winEnd), tideNote };
+  const fmtH = h => { const d=new Date(2000,0,1,Math.floor(h),(h%1)*60|0); return fmt(d); };
+
+  // ── Tide note (always built if data exists) ──
+  const exs = TIDES[station]?.[dateKey];
+  let tideNote='';
+  let tidePreferHour=null; // decimal hour of best high tide (null if none)
+  if(exs?.length){
+    const highs=exs.filter(e=>e.type==='High');
+    const lows=exs.filter(e=>e.type==='Low');
+    const sydHour=dt=>{
+      const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});
+      const [h,m]=s.split(':').map(Number); return h+m/60;
+    };
+    const daytimeHighs=highs.filter(h=>{const hr=sydHour(h.dt);return hr>=6&&hr<=19;});
+    const targetHigh=daytimeHighs.find(h=>sydHour(h.dt)<=13)||daytimeHighs[0]||highs[0]||null;
+    if(targetHigh) tidePreferHour=sydHour(targetHigh.dt);
+    tideNote=(targetHigh?'↑ high '+targetHigh.timeStr+' ('+targetHigh.height.toFixed(1)+'m)':'')
+      +(lows[0]?' · ↓ low '+lows[0].timeStr+' ('+lows[0].height.toFixed(1)+'m)':'');
+
+    // Night-dive fallback (no daytime high)
+    if(!daytimeHighs.length&&highs.length){
+      const nightHigh=highs.reduce((b,h)=>(!b||Math.abs(sydHour(h.dt)-21)<Math.abs(sydHour(b.dt)-21))?h:b,null);
+      if(nightHigh){
+        const ws=new Date(nightHigh.dt.getTime()-90*60000);
+        const we=new Date(nightHigh.dt.getTime()+60*60000);
+        return {window:'🌙 night dive '+fmt(ws)+'–'+fmt(we), tideNote};
+      }
+    }
+  }
+
+  // ── Conditions-based best 2-hour window ──
+  // Score each daylight hour: lower swell + lower wind = better
+  // Tide nearness adds a small bonus (±0.5h from high = best viz)
+  const dayHours=(dd?.hours||[]).filter(h=>h.hour>=6&&h.hour<=17);
+  if(dayHours.length>=2){
+    const swellMax=Math.max(...dayHours.map(h=>h.swell),0.1);
+    const windMax =Math.max(...dayHours.map(h=>h.wind),1);
+    // Score per hour: 0=best, higher=worse
+    const score=h=>{
+      const s=(h.swell/swellMax)*0.6+(h.wind/windMax)*0.4;
+      // tide bonus: reduce score by up to 0.15 if close to high tide
+      const tideDelta=tidePreferHour!=null?Math.abs(h.hour-tidePreferHour):999;
+      const tideBonus=tideDelta<=2?0.15*(1-tideDelta/2):0;
+      return s-tideBonus;
+    };
+    // Sliding 2-hour window average
+    let bestScore=Infinity, bestStartHour=7;
+    for(let i=0;i<dayHours.length-1;i++){
+      const avg=(score(dayHours[i])+score(dayHours[i+1]))/2;
+      if(avg<bestScore){bestScore=avg;bestStartHour=dayHours[i].hour;}
+    }
+    const winStr=fmtH(bestStartHour)+'–'+fmtH(bestStartHour+2);
+    return {window:winStr, tideNote};
+  }
+
+  // ── Pure tide fallback (no hourly data) ──
+  if(tidePreferHour!=null){
+    const startH=Math.max(6, tidePreferHour-1.5);
+    return {window:fmtH(startH)+'–'+fmtH(startH+2.5), tideNote};
+  }
+  return {window:'7–9am', tideNote};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOURLY SPARKLINE  (5am–8pm, swell bars + wind dots)
 // ─────────────────────────────────────────────────────────────────────────────
-function hourlySparkline(dd){
+function parseWindowHours(winStr){
+  if(!winStr||winStr.includes('🌙')) return {start:7,end:9};
+  const dash=winStr.indexOf('–');
+  if(dash<0) return {start:7,end:9};
+  const parsePart=s=>{
+    s=s.trim().toLowerCase();
+    const pm=s.includes('pm'), am=s.includes('am');
+    s=s.replace('am','').replace('pm','').trim();
+    const [h,m]=s.split(':').map(Number);
+    let hr=(h||0)+(m||0)/60;
+    if(pm&&hr<12) hr+=12;
+    if(am&&hr===12) hr=0;
+    return hr;
+  };
+  const startStr=winStr.slice(0,dash), endStr=winStr.slice(dash+1);
+  let start=parsePart(startStr), end=parsePart(endStr);
+  // If start had no am/pm indicator, inherit from end
+  if(!startStr.includes('am')&&!startStr.includes('pm')){
+    if(end<=12) {/* already am */} else if(start<end-12) start+=12;
+  }
+  return {start:Math.max(0,start), end:Math.min(23,end)};
+}
+
+function hourlySparkline(dd, diveWindow, tideInfo){
   if(!dd?.hours?.length) return '';
   const SHOW_FROM=5, SHOW_TO=20;
   const hrs=dd.hours.filter(h=>h.hour>=SHOW_FROM&&h.hour<=SHOW_TO);
   if(!hrs.length) return '';
 
-  const W=320, H=42, PAD=2;
-  const barW=Math.floor(W/hrs.length)-1;
-  const swellCap=Math.max(2.5, dd.swellMax||1);
-  const windCap =Math.max(25,  dd.windMax ||10);
+  // Layout — swell only, tide overlaid
+  const W=520, PAD_L=30, PAD_R=6;
+  const SWELL_H=72, LABEL_H=14;
+  const TOTAL_H=SWELL_H+LABEL_H;
+  const chartW=W-PAD_L-PAD_R;
+  const n=hrs.length;
+  const slotW=chartW/n;
+  const barW=Math.max(2, slotW*0.7);
 
-  // Colour helpers — match condColor thresholds
-  const sc=s=>s>PREFS.maxSwell?'#ff3355':s>PREFS.maxSwell*0.5?'#ffdd00':'#00ff88';
-  const wc=w=>w>PREFS.maxWind ?'#ff3355':w>PREFS.maxWind*0.8 ?'#ffdd00':'#00ff88';
+  // Scales
+  const swellCap=Math.max(1.5, dd.swellMax||1);
+  const goSwell=PREFS.maxSwell;
 
-  let bars='', labels='';
+  // Colour helper
+  const sc=s=>s>goSwell?'#ff3355':s>goSwell*0.7?'#ffdd00':'#00ffe0';
+
+  // x centre for slot i
+  const cx=i=>PAD_L+i*slotW+slotW/2;
+  // swell y
+  const sy=s=>SWELL_H-Math.max(2,Math.round((s/swellCap)*SWELL_H));
+
+  const PRINT_HOURS=[7,9,12,15,18];
+
+  let svg='';
+
+  // ── Y-axis labels ──
+  svg+=`<text x="${PAD_L-3}" y="${SWELL_H}" text-anchor="end" font-size="6.5" fill="#3a7868">0</text>`;
+  svg+=`<text x="${PAD_L-3}" y="${sy(swellCap/2)+4}" text-anchor="end" font-size="6.5" fill="#3a7868">${(swellCap/2).toFixed(1)}</text>`;
+  svg+=`<text x="${PAD_L-3}" y="${sy(swellCap)+4}" text-anchor="end" font-size="6.5" fill="#3a7868">${swellCap.toFixed(1)}</text>`;
+  svg+=`<text x="2" y="${SWELL_H/2+4}" text-anchor="start" font-size="6" fill="#3a7868" transform="rotate(-90,8,${SWELL_H/2})">swell m</text>`;
+
+  // ── Baseline ──
+  svg+=`<line x1="${PAD_L}" y1="${SWELL_H}" x2="${W-PAD_R}" y2="${SWELL_H}" stroke="rgba(255,255,255,.06)" stroke-width="0.5"/>`;
+
+  // ── GO bar (dashed) ──
+  const goY=sy(goSwell);
+  svg+=`<line x1="${PAD_L}" y1="${goY}" x2="${W-PAD_R}" y2="${goY}" stroke="#00ffe0" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.35"/>`;
+  svg+=`<text x="${W-PAD_R+1}" y="${goY+3}" font-size="6" fill="#00ffe0" opacity="0.5">GO</text>`;
+
+  // ── Dive window highlight ──
+  const {start:winStartH, end:winEndH}=parseWindowHours(diveWindow);
+  const diveStartIdx=hrs.findIndex(h=>h.hour>=winStartH);
+  const diveEndIdx=[...hrs].reverse().findIndex(h=>h.hour<=winEndH);
+  const diveEndIdxFwd=diveEndIdx>=0?hrs.length-1-diveEndIdx:-1;
+  if(diveStartIdx>=0&&diveEndIdxFwd>=diveStartIdx){
+    const wx0=PAD_L+diveStartIdx*slotW;
+    const wx1=PAD_L+(diveEndIdxFwd+1)*slotW;
+    const winW=wx1-wx0;
+    svg+=`<rect x="${wx0}" y="0" width="${winW}" height="${SWELL_H}" rx="2" fill="rgba(0,255,200,0.06)" stroke="rgba(0,255,200,0.18)" stroke-width="0.6"/>`;
+    svg+=`<text x="${wx0+winW/2}" y="${-3}" text-anchor="middle" font-size="6.5" fill="rgba(0,255,200,0.55)">${diveWindow||'best window'}</text>`;
+  }
+
+  // ── Swell bars ──
   hrs.forEach((h,i)=>{
-    const x=PAD+i*(barW+1);
-    const sh=Math.max(2,Math.round((h.swell/swellCap)*(H-10)));
-    const wh=Math.max(1,Math.round((h.wind /windCap )*(H-10)));
-    // Swell bar
-    bars+=`<rect x="${x}" y="${H-sh-4}" width="${barW}" height="${sh}" rx="1" fill="${sc(h.swell)}" opacity="0.75"/>`;
-    // Wind line dot
-    bars+=`<circle cx="${x+barW/2}" cy="${H-wh-4}" r="1.5" fill="${wc(h.wind)}" opacity="0.9"/>`;
-    // Hour labels every 3h
+    const x=cx(i);
+    const sh=SWELL_H-sy(h.swell);
+    svg+=`<rect x="${(x-barW/2).toFixed(1)}" y="${sy(h.swell).toFixed(1)}" width="${barW.toFixed(1)}" height="${sh.toFixed(1)}" rx="1" fill="${sc(h.swell)}" opacity="0.72"/>`;
+    if(PRINT_HOURS.includes(h.hour)){
+      svg+=`<text x="${x.toFixed(1)}" y="${(sy(h.swell)-3).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${sc(h.swell)}" font-weight="600">${h.swell.toFixed(1)}</text>`;
+    }
     if(h.hour%3===0){
-      const lbl=h.hour===0?'12a':h.hour<12?h.hour+'a':h.hour===12?'12p':(h.hour-12)+'p';
-      labels+=`<text x="${x+barW/2}" y="${H}" text-anchor="middle" font-size="7" fill="#2a6858">${lbl}</text>`;
+      const lbl=h.hour<12?h.hour+'a':h.hour===12?'12p':(h.hour-12)+'p';
+      svg+=`<text x="${x.toFixed(1)}" y="${TOTAL_H}" text-anchor="middle" font-size="7" fill="#2a6858">${lbl}</text>`;
     }
   });
 
-  // Dive window highlight (7-10am)
-  const diveStart=hrs.findIndex(h=>h.hour===7);
-  const diveEnd  =hrs.findIndex(h=>h.hour===10);
-  let highlight='';
-  if(diveStart>=0&&diveEnd>=0){
-    const x0=PAD+diveStart*(barW+1);
-    const x1=PAD+(diveEnd+1)*(barW+1);
-    highlight=`<rect x="${x0}" y="0" width="${x1-x0}" height="${H-6}" rx="2" fill="rgba(0,255,200,0.07)" stroke="rgba(0,255,200,0.2)" stroke-width="0.5"/>`;
+  // ── Tide curve ──
+  if(tideInfo){
+    const {station, dateKey}=tideInfo;
+    const exs=TIDES[station]?.[dateKey];
+    if(exs?.length>=2){
+      // Convert extremes to decimal hours
+      const sydHour=dt=>{
+        const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});
+        const [h,m]=s.split(':').map(Number); return h+m/60;
+      };
+      const pts=exs.map(e=>({h:sydHour(e.dt), ht:e.height})).sort((a,b)=>a.h-b.h);
+      const tideCap=Math.max(2, ...pts.map(p=>p.ht));
+      // Cosine interpolation between consecutive extremes
+      const tideAtHour=hr=>{
+        for(let i=0;i<pts.length-1;i++){
+          if(hr>=pts[i].h&&hr<=pts[i+1].h){
+            const t=(hr-pts[i].h)/(pts[i+1].h-pts[i].h);
+            return (pts[i].ht+pts[i+1].ht)/2-(pts[i+1].ht-pts[i].ht)/2*Math.cos(Math.PI*t);
+          }
+        }
+        return hr<pts[0].h?pts[0].ht:pts[pts.length-1].ht;
+      };
+      // Overlay tide line on swell row — scaled to swell row height
+      const tidePts=hrs.map((h,i)=>{
+        const ht=tideAtHour(h.hour);
+        const ty=SWELL_H-Math.round((ht/tideCap)*SWELL_H);
+        return `${cx(i).toFixed(1)},${ty}`;
+      });
+      svg+=`<polyline points="${tidePts.join(' ')}" fill="none" stroke="rgba(100,200,240,0.65)" stroke-width="1.5" stroke-linejoin="round"/>`;
+      // Dot + label at each high/low extreme
+      pts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach(p=>{
+        const xi=PAD_L+(p.h-SHOW_FROM)/(SHOW_TO-SHOW_FROM)*chartW;
+        const ty=SWELL_H-Math.round((p.ht/tideCap)*SWELL_H);
+        svg+=`<circle cx="${xi.toFixed(1)}" cy="${ty}" r="2.5" fill="rgba(100,200,240,0.85)"/>`;
+        svg+=`<text x="${xi.toFixed(1)}" y="${ty-4}" text-anchor="middle" font-size="6.5" fill="rgba(100,200,240,0.9)" font-weight="600">${p.ht.toFixed(1)}m</text>`;
+      });
+    }
   }
 
-  // Build warning annotation
+
+  // ── Build warning ──
   let buildNote='';
   if(dd.swellMax && dd.swellMax > dd.swell + 0.4){
-    buildNote=`<div style="font-size:.6rem;color:#ffdd00;margin-top:3px">⬆ builds to ${dd.swellMax.toFixed(1)}m later · dive early</div>`;
+    buildNote=`<div style="font-size:.6rem;color:#ffdd00;margin-top:3px">⬆ swell builds to ${dd.swellMax.toFixed(1)}m later · dive early</div>`;
   } else if(dd.windMax && dd.windMax > dd.wind + 5){
     buildNote=`<div style="font-size:.6rem;color:#ffdd00;margin-top:3px">⬆ wind builds to ${dd.windMax.toFixed(0)}kt later · dive early</div>`;
   }
 
-  return `<div style="grid-column:1/-1;margin-top:4px">`+
-    `<div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Hourly forecast <span style="color:#2a6858;font-size:.55rem">(swell bars · wind dots · <span style="color:rgba(0,255,200,0.6)">▮</span> dive window)</span></div>`+
-    `<svg viewBox="0 0 ${W} ${H+2}" width="100%" height="${H+2}" style="display:block;overflow:visible">`+
-      highlight+bars+labels+
+  return `<div style="grid-column:1/-1;margin-top:6px">`+
+    `<div style="color:var(--muted);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Hourly forecast</div>`+
+    `<svg viewBox="0 0 ${W} ${TOTAL_H+4}" width="100%" style="display:block;overflow:visible">`+
+      svg+
     `</svg>`+
     buildNote+
   `</div>`;
@@ -1463,7 +1569,7 @@ function renderVerdict(){
     : '';
 
   const tideStation = bestSite ? stationFor(bestSite) : 'fort-denison';
-  const {window:diveWindow, tideNote} = bestDiveWindow(d, tideStation);
+  const {window:diveWindow, tideNote} = bestDiveWindow(d, tideStation, hd);
 
   // Best site hero row
   const km = bestSite ? haversine(baseCoords.lat,baseCoords.lng,bestSite.lat,bestSite.lng) : null;
@@ -1489,7 +1595,7 @@ function renderVerdict(){
       '<div style="grid-column:1/-1"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Best window'+(tideNote?' (tide)':'')+'</div>'+
         '<span style="color:var(--accent)">'+diveWindow+'</span>'+(tideNote?'<span style="font-size:.6rem;color:var(--muted);margin-left:8px">'+tideNote+'</span>':'')+
       '</div>'+
-      hourlySparkline(hd)+
+      hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
     '</div>':'';
 
   const sitesBlock=vt==='NO'&&!cal?.blocked?'<div style="color:var(--muted);margin-top:12px;font-size:.72rem">No sites within GO bar for this day.</div>':
@@ -1616,7 +1722,7 @@ function renderSites(){
         rainWarn(site)+vizTideNote(site,true)+
         (activeWildlife.length?'<br>'+activeWildlife.map(w=>w.icon+' '+w.label).join(' · '):'')+
         '<br><span style="opacity:.55">'+site.region+' · '+km.toFixed(1)+'km · '+site.driveMin+'min drive</span>'+
-        hourlySparkline(dd)+
+        hourlySparkline(dd, bestDiveWindow(dd?.date||'', stationFor(site), dd).window, {station:stationFor(site), dateKey:dd?.date||''})+
       '</div>';
     return '<div class="feat-row" style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
       '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
@@ -1647,7 +1753,7 @@ function renderSites(){
   restRanked.forEach(e=>{const g=REGION_NCS[e.site.region]||'SS';ncsGrouped[g].push(e);});
 
   function buildSiteCard({site,r,dd,km}){
-    const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site));
+    const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site), dd);
     const v=r.verdict.toLowerCase();
     const km_str=km<2?(km*1000).toFixed(0)+'m':km.toFixed(1)+'km';
     const tags=[];
@@ -1694,7 +1800,7 @@ function renderSites(){
           '<span style="opacity:.6">Depth: '+site.depthMin+'–'+site.depthMax+'m · Entry: '+site.entry+(site.buddyOnly?' · ⚠ BUDDY REQUIRED':'')+'</span>'+
           '<div style="margin-top:6px;font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
           (site.tideAdvice?'<div class="tide-advice">🌊 Tide: '+site.tideAdvice+'</div>':'')+
-          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+hourlySparkline(dd)+
+          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+hourlySparkline(dd, diveWindow, {station:stationFor(site), dateKey:d})+
         '</div>'+
       '</div>'
     );
