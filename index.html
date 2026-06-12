@@ -649,7 +649,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
           <tr style="border-top:1px solid var(--border);"><td style="padding:.3rem .5rem .3rem 0;">13–16°C</td><td style="padding:.3rem 0;">7mm full or drysuit</td></tr>
           <tr style="border-top:1px solid var(--border);"><td style="padding:.3rem .5rem .3rem 0;">&lt; 13°C</td><td style="padding:.3rem 0;">Drysuit recommended</td></tr>
         </table>
-        <div style="margin-top:.4rem;color:var(--muted);">Sydney ranges: ~18–22°C summer, ~16–18°C winter. Adjust the temp slider to your own cold tolerance, or leave at none to ignore temp entirely.</div>
+        <div style="margin-top:.4rem;color:var(--muted);">Sydney ranges: ~18–22°C summer, ~16–18°C winter. Cold tolerance varies — these are general guides only.</div>
       </div>
 
       <!-- 18H NO-FLY -->
@@ -701,22 +701,33 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
   </div>
 </div>
 
-<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
-  <a href="https://www.michaelmcfadyenscuba.info" target="_blank" class="ext-link-btn" style="border-color:rgba(180,140,255,.45);color:rgba(200,170,255,.9)" title="Michael McFadyen — 30 years of Sydney dive knowledge">McFADYEN ↗</a>
-  <a href="https://www.viz.net.au/divesite-forecast" target="_blank" class="ext-link-btn viz-btn" title="VIZ — Sydney dive community · custom forecast model · georeferenced maps · citizen science (CC BY NC ND)">🌊 VIZ ↗</a>
-  <a href="https://www.abyss.com.au/dive-conditions" target="_blank" class="ext-link-btn abyss-btn" title="Abyss Scuba — daily measured viz &amp; conditions">ABYSS ↗</a>
-  <a href="https://www.bom.gov.au/nsw/forecasts/index.shtml" target="_blank" class="ext-link-btn" style="border-color:rgba(80,160,255,.45);color:rgba(150,200,255,.9)" title="Bureau of Meteorology — NSW weather forecasts">BoM NSW ↗</a>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
+  <a href="https://www.michaelmcfadyenscuba.info" target="_blank" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 8px;background:var(--card);border:1px solid var(--border);border-radius:8px;text-decoration:none;text-align:center;transition:border-color .15s,background .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--card)'">
+    <span style="font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)">McFadyen ↗</span>
+    <span style="font-size:.58rem;color:var(--muted);line-height:1.3">Site knowledge<br>30+ yrs field notes</span>
+  </a>
+  <a href="https://www.viz.net.au/divesite-forecast" target="_blank" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 8px;background:var(--card);border:1px solid var(--border);border-radius:8px;text-decoration:none;text-align:center;transition:border-color .15s,background .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--card)'">
+    <span style="font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)">🌊 VIZ ↗</span>
+    <span style="font-size:.58rem;color:var(--muted);line-height:1.3">Sydney dive community<br>site forecasts &amp; maps</span>
+  </a>
+  <a href="https://www.abyss.com.au/dive-conditions" target="_blank" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 8px;background:var(--card);border:1px solid var(--border);border-radius:8px;text-decoration:none;text-align:center;transition:border-color .15s,background .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--card)'">
+    <span style="font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)">Abyss ↗</span>
+    <span style="font-size:.58rem;color:var(--muted);line-height:1.3">Daily measured<br>viz &amp; conditions</span>
+  </a>
+  <a href="https://www.bom.gov.au/nsw/forecasts/index.shtml" target="_blank" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 8px;background:var(--card);border:1px solid var(--border);border-radius:8px;text-decoration:none;text-align:center;transition:border-color .15s,background .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--card)'">
+    <span style="font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)">BoM ↗</span>
+    <span style="font-size:.58rem;color:var(--muted);line-height:1.3">NSW forecasts<br>&amp; tides</span>
+  </a>
 </div>
 
 <div style="text-align:center;margin-top:20px;padding-top:18px;border-top:1px solid var(--rim)">
   <p style="font-size:.68rem;line-height:1.8;color:var(--muted);margin:0 0 12px;">
     <span style="color:rgba(255,51,85,.7);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-right:.4em;">⚠ Disclaimer</span>
     Conditions assessments are automated estimates only — never a substitute for personal judgement and an in-water check on the day.
-    Adjust sliders to match <em>your own</em> skills and risk tolerance.
-    Always dive within your certification and check conditions before entering the water.
+    Always assess conditions yourself before entering the water and dive within your certification level.
     No liability is accepted for decisions made based on this tool's output.
   </p>
-  <div style="font-size:.68rem;color:var(--muted);margin-bottom:14px">&copy; Fred White 2025&ndash;2026 &middot; personal aggregator, non-commercial use only</div>
+  <div style="font-size:.68rem;color:var(--muted);margin-bottom:14px">&copy; Fred White 2026 &middot; personal aggregator, non-commercial use only</div>
   <a href="mailto:divewatchsydney@icloud.com" style="display:inline-block;color:var(--accent);text-decoration:none;font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:6px 18px;border:1px solid var(--accent);border-radius:6px;transition:all .15s;" onmouseover="this.style.background='var(--accent)';this.style.color='var(--surface)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">✉ Contact us</a>
 </div>
 </div><!-- .wrap -->
@@ -740,18 +751,18 @@ const CAL = {}; // no personal calendar
 // ─────────────────────────────────────────────────────────────────────────────
 const SITES = [
   // Sydney Harbour — fully enclosed, swell irrelevant
-  { id:'clifton-gardens',    name:'Clifton Gardens',        region:'Sydney Harbour',   lat:-33.8387, lng:151.2524, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:10, driveMin:25, notes:'Sandy walk-in. Marine reserve. Best high/incoming tide — viz drops on run-out. Excellent beginner & solo. Any wind OK.', tideAdvice:'High/incoming tide — viz drops on run-out', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seahorses',icon:'🐠'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Blue-ring octopus',icon:'🐙'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Anglerfish',icon:'🐟'}] },
-  { id:'camp-cove',          name:'Camp Cove',              region:'Sydney Harbour',   lat:-33.8332, lng:151.2762, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:12, driveMin:30, notes:'Sheltered harbour entry. Can go green after rain (stormwater). Avoid post prolonged rain.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Blue-ring octopus',icon:'🐙'}] },
-  { id:'fairlight',          name:'Fairlight',              region:'Sydney Harbour',   lat:-33.7989, lng:151.2441, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:8,  driveMin:20, notes:'Easy harbour entry off Manly. Good fishlife, suits all levels. Protected in any wind.' },
-  { id:'little-manly-point', name:'Little Manly Point',     region:'Sydney Harbour',   lat:-33.7965, lng:151.2356, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:10, driveMin:20, notes:'Steps entry into harbour. Weedy seadragons, nudibranchs. Full harbour shelter.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'}] },
+  { id:'clifton-gardens',    name:'Clifton Gardens',        region:'Sydney Harbour',   lat:-33.8387, lng:151.2524, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:10, driveMin:25, tideEffect:'prefer_high', notes:'Sandy walk-in. Marine reserve. Best high/incoming tide — viz drops on run-out. Excellent beginner & solo. Any wind OK.', tideAdvice:'High/incoming tide — viz drops on run-out', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seahorses',icon:'🐠'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Blue-ring octopus',icon:'🐙'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Anglerfish',icon:'🐟'}] },
+  { id:'camp-cove',          name:'Camp Cove',              region:'Sydney Harbour',   lat:-33.8332, lng:151.2762, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:12, driveMin:30, harbourChop:true, tideEffect:'neutral', notes:'Sheltered harbour entry. Can go green after rain (stormwater). Avoid post prolonged rain. Affected by cross-harbour wind chop when wind is strong, even though ocean-protected.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Blue-ring octopus',icon:'🐙'}] },
+  { id:'fairlight',          name:'Fairlight',              region:'Sydney Harbour',   lat:-33.7989, lng:151.2441, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:8,  driveMin:20, harbourChop:true, tideEffect:'avoid_low', notes:'Easy harbour entry off Manly. Good fishlife, suits all levels. Protected in any wind. Shallow reef crossing near-impossible at low tide. Affected by cross-harbour wind chop.' },
+  { id:'little-manly-point', name:'Little Manly Point',     region:'Sydney Harbour',   lat:-33.7965, lng:151.2356, entry:'shore', solo:true,  buddyOnly:false, shelterDir:'harbour', exposedDir:[],                      depthMin:0,  depthMax:10, driveMin:20, tideEffect:'prefer_high', notes:'Steps entry into harbour. Weedy seadragons, nudibranchs. Full harbour shelter. Better at high tide — more water over steps.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'}] },
   // Northern Beaches
   { id:'shelly-beach-manly', name:'Shelly Beach (Manly)',   region:'Northern Beaches', lat:-33.7974, lng:151.2897, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W','SW','S','SE'], exposedDir:['NE','E'], depthMin:0,  depthMax:20, driveMin:25, notes:'Marine reserve. Reliable viz, prolific fishlife. Sheltered from southerlies and SE. Most exposed to NE/E swell (bay mouth opens NNE). McFadyen: southerlies fine up to 15-20kt.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Blue groper',icon:'🐟'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Cuttlefish',icon:'🦑'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Turtles',icon:'🐢'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'}] },
   { id:'long-reef',          name:'Long Reef',              region:'Northern Beaches', lat:-33.7370, lng:151.3188, entry:'shore', solo:false, buddyOnly:false, shelterDir:['W','NW','SW'],    exposedDir:['N','NE','E','SE','S'], depthMin:3,  depthMax:18, driveMin:35, notes:'Exposed headland. Needs light W-NW wind and small swell. Aquatic reserve. Not solo-friendly (surge, entry hazards). ⚠ Tidal rip at northern tip on spring ebb — partly current-driven, independent of swell conditions.' },
   // Eastern Suburbs
-  { id:'shark-point',        name:'Shark Point (Clovelly)', region:'Eastern Suburbs',  lat:-33.9147, lng:151.2641, entry:'shore', solo:false, buddyOnly:false, shelterDir:['N','NW','W','SW'], exposedDir:['E','SE'],    depthMin:0,  depthMax:18, driveMin:30, notes:'⚠ NOT SOLO — surge and surge channels require a buddy; helicopter rescue in 2019. Seadragons, moray eels, occasional grey nurse sharks. Steps entry. Use lee side in E/SE swell. Strong W/NW offshore wind flattens seas here — McFadyen prime condition. ⚠ Seasonal closure Oct–Dec (grey nurse shark breeding — check NSW DPI). ⚠ LOW water only — surge too strong at high tide.', tideAdvice:'LOW water only — surge unmanageable near high', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Rock blackfish',icon:'🐟'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Pygmy pipehorses',icon:'🐠'}] },
+  { id:'shark-point',        name:'Shark Point (Clovelly)', region:'Eastern Suburbs',  lat:-33.9147, lng:151.2641, entry:'shore', solo:false, buddyOnly:false, shelterDir:['N','NW','W','SW'], exposedDir:['E','SE'],    depthMin:0,  depthMax:18, driveMin:30, tideEffect:'avoid_high', tideSensitive:true, notes:'⚠ NOT SOLO — surge and surge channels require a buddy; helicopter rescue in 2019. Seadragons, moray eels, occasional grey nurse sharks. Steps entry. Use lee side in E/SE swell. Strong W/NW offshore wind flattens seas here — McFadyen prime condition. ⚠ Seasonal closure Oct–Dec (grey nurse shark breeding — check NSW DPI). ⚠ LOW water only — surge too strong at high tide.', tideAdvice:'LOW water only — surge unmanageable near high', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Rock blackfish',icon:'🐟'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Pygmy pipehorses',icon:'🐠'}] },
   { id:'gordons-bay',        name:"Gordon's Bay",           region:'Eastern Suburbs',  lat:-33.9194, lng:151.2597, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W','SW'], exposedDir:['E','SE'],    depthMin:0,  depthMax:12, driveMin:32, notes:'Natural ramp entry (rock shelf). Good training dive. Fishlife has declined in recent years. Avoid post-rain (stormwater). ⚠ Bronte-Coogee Aquatic Reserve — no collection.' },
   // Botany / South
-  { id:'bare-island',        name:'Bare Island',            region:'Botany / South',   lat:-33.9985, lng:151.2323, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W'],     exposedDir:['S','SE'],    depthMin:2,  depthMax:20, driveMin:35, notes:'Marine reserve. Seahorses, pygmy pipehorses, nudibranchs. Use N/lee side when S/SE swell. Multiple entry points.', tideAdvice:'Incoming tide preferred', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'PPH & Anglerfish',icon:'\u{1F409}'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seahorses',icon:'🐠'},{months:[7,8,9,10],label:'PJ sharks (Aug–Nov)',icon:'🦈'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Red Indianfish',icon:'🐟'}] },
+  { id:'bare-island',        name:'Bare Island',            region:'Botany / South',   lat:-33.9985, lng:151.2323, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W'],     exposedDir:['S','SE'],    depthMin:2,  depthMax:20, driveMin:35, tideEffect:'avoid_high', tideSensitive:true, notes:'Marine reserve. Seahorses, pygmy pipehorses, nudibranchs. Use N/lee side when S/SE swell. Multiple entry points. Entry/exit conditions worsen at high tide — prefer mid to low.', tideAdvice:'Mid to low tide — entry worsens as tide rises', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'PPH & Anglerfish',icon:'\u{1F409}'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seahorses',icon:'🐠'},{months:[7,8,9,10],label:'PJ sharks (Aug–Nov)',icon:'🦈'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Red Indianfish',icon:'🐟'}] },
   { id:'kurnell',            name:'Kurnell (Sutherland Pt)',region:'Botany / South',   lat:-34.0113, lng:151.1951, entry:'shore', solo:false, buddyOnly:false, shelterDir:['N','NW','W'],     exposedDir:['S','SE'],     depthMin:3,  depthMax:15, driveMin:45, notes:'Shore entry, Botany Bay. Watch exit in any swell. Not solo-recommended due to entry/exit difficulty.' },
   { id:'henry-head',         name:'Henry Head',             region:'Botany / South',   lat:-34.0108, lng:151.2296, entry:'boat',  solo:false, buddyOnly:false, shelterDir:['W','NW'],         exposedDir:['E','SE','S'], depthMin:10, depthMax:25, driveMin:50, notes:'Inside Botany Bay. Outstanding sponge gardens ("amazing sponge life"). Boat from Kurnell/Botany. Light winds only.', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Serpent eels',icon:'🐍'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Red Indianfish',icon:'🐟'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'🐉'}] },
   { id:'magic-point',        name:'Magic Point',            region:'Botany / South',   lat:-34.0337, lng:151.2336, entry:'boat',  solo:false, buddyOnly:true,  shelterDir:['W','NW','N'],     exposedDir:['E','SE','S'], depthMin:12, depthMax:25, driveMin:50, notes:'BUDDY REQUIRED. Grey nurse shark aggregation site — mostly females & juveniles. ⚠ NSW DPI LEGAL: max 10 divers, no night/dawn/dusk dives, no cave entry, no underwater scooters — penalties up to $110,000. Exposed headland, calm only. Must pre-book.', seasonalWildlife:[{months:[4,5,6,7,8,9],label:'Grey nurses (peak May–Oct)',icon:'\u{1F988}'}] },
@@ -773,8 +784,8 @@ const SITES = [
   { id:'lighthouse-reef',    name:'Lighthouse Reef (Norah Head)',region:'Central Coast',lat:-33.2800, lng:151.5800, entry:'boat',  solo:false, buddyOnly:false, shelterDir:['W','NW','N'],     exposedDir:['E','SE','NE'],depthMin:12, depthMax:19, driveMin:110,notes:'Wall 12-19m, gorgonias, Port Jackson sharks, wobbegongs. Surf-launch ramp limits access. Use Pro Dive Central Coast. 90min from Sydney.', seasonalWildlife:[{months:[7,8,9],label:'PJ sharks',icon:'🦈'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Wobbegongs',icon:'🦈'}] },
 
   // Additional sites (McFadyen top-10 Sydney · sourced from 2200+ logged dives)
-  { id:'inscription-point',  name:'Inscription Point',      region:'Botany / South',   lat:-33.9997, lng:151.2295, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W'],     exposedDir:['S','SE','E'], depthMin:0,  depthMax:18, driveMin:37, tideAdvice:'Incoming preferred — viz drops on run-out', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons & PPH',icon:'\u{1F409}'}], notes:"McFadyen's most productive site for seadragons, pygmy pipehorses and rare anglerfish. Shore entry via steps/rocks at eastern end of Bare Island reserve. Go slowly. 145+ logged dives (McFadyen). Best on incoming tide." },
-  { id:'shiprock',           name:'Shiprock (Cronulla)',     region:'Royal Nat Park',   lat:-34.0530, lng:151.1528, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['W','SW','NW'],    exposedDir:['E','NE','N'], depthMin:0,  depthMax:16, driveMin:45, tideAdvice:'Incoming only — viz collapses on outgoing', notes:"McFadyen's #2 most-dived Sydney site (267 dives). Rock entry into Port Hacking entrance. Pineapplefish, anglerfish, moray eels, large flatheads. Seadragon occasional. Extremely tide-sensitive — enter just before high. ⚠ Port Hacking Aquatic Reserve — no collection.", seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Pineapple fish',icon:'🐡'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Anglerfish',icon:'🐟'}] },
+  { id:'inscription-point',  name:'Inscription Point',      region:'Botany / South',   lat:-33.9997, lng:151.2295, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['N','NW','W'],     exposedDir:['S','SE','E'], depthMin:0,  depthMax:18, driveMin:37, tideEffect:'prefer_high', tideAdvice:'Incoming preferred — viz drops on run-out', seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons & PPH',icon:'\u{1F409}'}], notes:"McFadyen's most productive site for seadragons, pygmy pipehorses and rare anglerfish. Shore entry via steps/rocks at eastern end of Bare Island reserve. Go slowly. 145+ logged dives (McFadyen). Best on incoming tide." },
+  { id:'shiprock',           name:'Shiprock (Cronulla)',     region:'Royal Nat Park',   lat:-34.0530, lng:151.1528, entry:'shore', solo:true,  buddyOnly:false, shelterDir:['W','SW','NW'],    exposedDir:['E','NE','N'], depthMin:0,  depthMax:16, driveMin:45, tideEffect:'prefer_high', tideSensitive:true, tideAdvice:'Incoming only — viz collapses on outgoing', notes:"McFadyen's #2 most-dived Sydney site (267 dives). Rock entry into Port Hacking entrance. Pineapplefish, anglerfish, moray eels, large flatheads. Seadragon occasional. Extremely tide-sensitive — enter just before high. ⚠ Port Hacking Aquatic Reserve — no collection.", seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Pineapple fish',icon:'🐡'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Anglerfish',icon:'🐟'}] },
   { id:'pizza-reef',         name:'Pizza Reef',             region:'Royal Nat Park',   lat:-34.0780, lng:151.1590, entry:'boat',  solo:false, buddyOnly:false, shelterDir:['W','NW','N'],     exposedDir:['E','SE','S'], depthMin:18, depthMax:26, driveMin:60, seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Donut nembrothas',icon:'\u{1F419}'},{months:[6,7,8,9,10],label:'Port Jackson sharks (Jul–Nov)',icon:'\u{1F988}'}], notes:"McFadyen's #5 Sydney site (165 dives). Consistently excellent viz — 18m+ reported regularly. Donut nembrothas on purple ascidians, gorgonias, bastard trumpeters, cave system. Pre-book Abyss/FrogDive. Boat from Port Hacking." },
   { id:'middle-ground',      name:'Middle Ground',          region:'Botany / South',   lat:-34.0650, lng:151.2200, entry:'boat',  solo:false, buddyOnly:false, shelterDir:['W','SW'],         exposedDir:['N','NE','E','SE','S'], depthMin:22, depthMax:32, driveMin:40, notes:"McFadyen's #4 Sydney site (170 dives). Up to 9 wobbegong sharks per dive, massive schools of yellowtail and silver sweep. Just over 30m — check surge depth formula (10s period: surge-free below 25m; 12s: feel it at 30m). Launch Botany Bay.", seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Wobbegongs',icon:'🦈'},{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Blue devilfish',icon:'🐟'},{months:[7,8,9,10],label:'Port Jackson sharks (Aug–Nov)',icon:'🦈'}] },
   { id:'the-leap',           name:'The Leap (Royal NP)',    region:'Royal Nat Park',   lat:-34.1001, lng:151.1627, entry:'shore', solo:false, buddyOnly:false, shelterDir:['W','NW','N'],     exposedDir:['E','SE','S'], depthMin:0,  depthMax:20, driveMin:65, seasonalWildlife:[{months:[0,1,2,3,4,5,6,7,8,9,10,11],label:'Seadragons',icon:'\u{1F409}'}], notes:'McFadyen site tip: "great place to find sea dragons." Shore entry off rocks in Royal NP. Club boats also run here. Avoid in any S/SE swell — exposed entry/exit. Check Royal NP access.' },
@@ -896,6 +907,11 @@ function assess(site, dayData, prefs){
       return { verdict:'NO', reason:'Conditions too marginal for offshore boat run', eff:{swell:es,wind:ew} };
   }
 
+  // Harbour wind chop: hard MAYBE return if wind >18kt (note appended to surgeNote below after its declaration)
+  if(site.harbourChop && dayData.wind>18){
+    return { verdict:'MAYBE', reason:'Strong harbour wind chop ('+dayData.wind.toFixed(0)+'kt) — surface conditions disturbed even in harbour', eff:{swell:es,wind:ew} };
+  }
+
   // Harbour sites: add contextual note when raw offshore swell is high even if effective swell is fine
   const harbourRawNote = (site.shelterDir==='harbour' && dayData.swell>=1.5)
     ? ' · ℹ harbour sheltered but ocean is rough ('+dayData.swell.toFixed(1)+'m offshore)' : '';
@@ -929,6 +945,24 @@ function assess(site, dayData, prefs){
     }
   }
 
+  // Harbour wind chop note (12–18kt) — appended here after surgeNote is declared
+  if(site.harbourChop && dayData.wind>12){
+    surgeNote+=' · ⚠ wind chop building in harbour ('+dayData.wind.toFixed(0)+'kt)';
+  }
+
+  // Tide sensitivity note — appended here after surgeNote is declared
+  if(site.tideSensitive && site.tideEffect==='avoid_high'){
+    const exs=TIDES[REGION_STATION[site.region]||'fort-denison']?.[dayData.date];
+    if(exs?.length){
+      const sydHr=dt=>{const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});const[h,m]=s.split(':').map(Number);return h+m/60;};
+      const nowH=new Date().getHours()+new Date().getMinutes()/60;
+      const nearest=exs.reduce((a,b)=>Math.abs(sydHr(b.dt)-nowH)<Math.abs(sydHr(a.dt)-nowH)?b:a);
+      if(nearest.type==='High'&&nearest.height>1.0){
+        surgeNote+=' · ⚠ high tide ('+nearest.height.toFixed(1)+'m) — entry conditions worse at this site';
+      }
+    }
+  }
+
   if(swMAYBE || wdMAYBE || tMAYBE){
     const r=[];
     if(swMAYBE) r.push('swell '+es.toFixed(2)+'m (near '+prefs.maxSwell+'m limit)');
@@ -956,9 +990,12 @@ function dayBestVerdict(dateKey){
 // ─── SYDNEY SEASONAL DATA  (McFadyen, page_id=744, 2200+ dives) ────────────
 const SYDNEY_TEMPS = [18.7,19.3,19.7,19.7,18.8,17.0,16.0,15.7,15.7,16.0,16.9,18.1];
 
-// McFadyen rain rule: >100mm in 4 days wrecks viz in Port Hacking and Botany Bay (page_id=909)
-let RAIN_TOTAL = null;
+/// McFadyen rain rule: >100mm in 4 days wrecks viz in Port Hacking and Botany Bay (page_id=909)
+let RAIN_TOTAL = null;       // past 4 days (mm)
+let RAIN_FORECAST = null;    // next 2 days forecast (mm) — warn if heavy rain incoming
 const RAIN_AFFECTED_REGIONS = ['Botany / South','Royal Nat Park'];
+// Harbour/stormwater-sensitive sites (viz degrades after any significant rain)
+const RAIN_HARBOUR_SITES = ['camp-cove','gordons-bay','chowder-bay'];
 
 const SYDNEY_VIZ = [
   [19,54,22, 11.8,17.5],
@@ -1223,7 +1260,7 @@ function updateTideNotice(){
   el.innerHTML='⚠ Embedded BoM tide tables run through '+end+'. Beyond that, best-window times fall back to a default and are approximate — refresh the tide data.';
 }
 
-function bestDiveWindow(dateKey, station='fort-denison', dd=null){
+function bestDiveWindow(dateKey, station='fort-denison', dd=null, site=null){
   // fmt helper — shared
   const fmt = dt => dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'numeric',minute:'2-digit',hour12:true})
                       .replace(':00','').toLowerCase().replace(' ','');
@@ -1232,7 +1269,8 @@ function bestDiveWindow(dateKey, station='fort-denison', dd=null){
   // ── Tide note (always built if data exists) ──
   const exs = TIDES[station]?.[dateKey];
   let tideNote='';
-  let tidePreferHour=null; // decimal hour of best high tide (null if none)
+  let tidePreferHour=null; // decimal hour of best tide for this site (null if none)
+  const tideEffect=site?.tideEffect||'prefer_high'; // default: prefer high tide for viz
   if(exs?.length){
     const highs=exs.filter(e=>e.type==='High');
     const lows=exs.filter(e=>e.type==='Low');
@@ -1241,8 +1279,22 @@ function bestDiveWindow(dateKey, station='fort-denison', dd=null){
       const [h,m]=s.split(':').map(Number); return h+m/60;
     };
     const daytimeHighs=highs.filter(h=>{const hr=sydHour(h.dt);return hr>=6&&hr<=19;});
+    const daytimeLows=lows.filter(l=>{const hr=sydHour(l.dt);return hr>=6&&hr<=19;});
+    // tideEffect drives which extreme we target for the best window
+    if(tideEffect==='avoid_high'||tideEffect==='prefer_low'){
+      // Sites like Shark Point, Bare Island — want low or mid-incoming (2h before low)
+      const targetLow=daytimeLows[0]||lows[0]||null;
+      if(targetLow) tidePreferHour=Math.max(6, sydHour(targetLow.dt)-1); // arrive 1h before low
+    } else if(tideEffect==='avoid_low'){
+      // Sites like Fairlight — shallow crossing impossible at low tide, target high
+      const targetHigh=daytimeHighs[0]||highs[0]||null;
+      if(targetHigh) tidePreferHour=sydHour(targetHigh.dt);
+    } else {
+      // Default prefer_high — viz best on high/incoming
+      const targetHigh=daytimeHighs.find(h=>sydHour(h.dt)<=13)||daytimeHighs[0]||highs[0]||null;
+      if(targetHigh) tidePreferHour=sydHour(targetHigh.dt);
+    }
     const targetHigh=daytimeHighs.find(h=>sydHour(h.dt)<=13)||daytimeHighs[0]||highs[0]||null;
-    if(targetHigh) tidePreferHour=sydHour(targetHigh.dt);
     tideNote=(targetHigh?'↑ high '+targetHigh.timeStr+' ('+targetHigh.height.toFixed(1)+'m)':'')
       +(lows[0]?' · ↓ low '+lows[0].timeStr+' ('+lows[0].height.toFixed(1)+'m)':'');
 
@@ -1258,28 +1310,44 @@ function bestDiveWindow(dateKey, station='fort-denison', dd=null){
   }
 
   // ── Conditions-based best 2-hour window ──
-  // Score each daylight hour: lower swell + lower wind = better
-  // Tide nearness adds a small bonus (±0.5h from high = best viz)
+  // Apply site-specific shelter/exposure to each hour so different sites score differently
+  // even when they share the same zone weather data.
   const dayHours=(dd?.hours||[]).filter(h=>h.hour>=6&&h.hour<=17);
   if(dayHours.length>=2){
-    const swellMax=Math.max(...dayHours.map(h=>h.swell),0.1);
-    const windMax =Math.max(...dayHours.map(h=>h.wind),1);
-    // Score per hour: 0=best, higher=worse
+    // Get effective (site-shielded) swell+wind per hour
+    const effHours=dayHours.map(h=>{
+      if(!site) return h;
+      const {swell:es, wind:ew}=shield(site,h.swell,h.wind,h.windDir,h.swellDir,h.period);
+      // Also apply period multiplier
+      let pf=1;
+      if(h.period!=null){if(h.period<8)pf=0.80;else if(h.period<12)pf=1.00;else if(h.period<16)pf=1.20;else pf=1.40;}
+      return {...h, swell:es*pf, wind:ew};
+    });
+    const swellMax=Math.max(...effHours.map(h=>h.swell),0.1);
+    const windMax =Math.max(...effHours.map(h=>h.wind),1);
+    const swellMin=Math.min(...effHours.map(h=>h.swell));
+    const windMin =Math.min(...effHours.map(h=>h.wind));
+    // Flat day after shelter applied: conditions uniform — use tide preference + morning default
+    const conditionsFlat=(swellMax-swellMin)<0.15&&(windMax-windMin)<4;
+    if(conditionsFlat){
+      const morningStart=(tidePreferHour!=null&&tidePreferHour>=6&&tidePreferHour<=10)
+        ? Math.max(6, Math.floor(tidePreferHour-0.5)) : 7;
+      return {window:fmtH(morningStart)+'–'+fmtH(morningStart+2), tideNote};
+    }
+    // Score per hour using effective (site-shielded) values
     const score=h=>{
       const s=(h.swell/swellMax)*0.6+(h.wind/windMax)*0.4;
-      // tide bonus: reduce score by up to 0.15 if close to high tide
       const tideDelta=tidePreferHour!=null?Math.abs(h.hour-tidePreferHour):999;
-      const tideBonus=tideDelta<=2?0.15*(1-tideDelta/2):0;
+      const tideBonus=tideDelta<=2?0.10*(1-tideDelta/2):0;
       return s-tideBonus;
     };
-    // Sliding 2-hour window average
+    // Sliding 2-hour window average over site-effective hours
     let bestScore=Infinity, bestStartHour=7;
-    for(let i=0;i<dayHours.length-1;i++){
-      const avg=(score(dayHours[i])+score(dayHours[i+1]))/2;
-      if(avg<bestScore){bestScore=avg;bestStartHour=dayHours[i].hour;}
+    for(let i=0;i<effHours.length-1;i++){
+      const avg=(score(effHours[i])+score(effHours[i+1]))/2;
+      if(avg<bestScore){bestScore=avg;bestStartHour=effHours[i].hour;}
     }
-    const winStr=fmtH(bestStartHour)+'–'+fmtH(bestStartHour+2);
-    return {window:winStr, tideNote};
+    return {window:fmtH(bestStartHour)+'–'+fmtH(bestStartHour+2), tideNote};
   }
 
   // ── Pure tide fallback (no hourly data) ──
@@ -1417,27 +1485,19 @@ function hourlySparkline(dd, diveWindow, tideInfo){
       // Close polygon along baseline
       const firstX=cx(0), lastX=cx(hrs.length-1);
       svg+=`<polygon points="${firstX},${SWELL_H} ${shadePts.join(' ')} ${lastX},${SWELL_H}" fill="rgba(100,180,220,0.10)" stroke="none"/>`;
-      // Vertical dashed tick at each high/low extreme + label
-      const fmtTideTime=h=>{
-        const hh=Math.floor(h), mm=Math.round((h%1)*60);
-        const period=hh<12?'am':'pm';
-        const disp=hh%12||12;
-        return `${disp}:${String(mm).padStart(2,'0')}${period}`;
-      };
-      pts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach(p=>{
+      // Vertical dashed tick at each high/low extreme + label (always at top, clear of bars)
+      pts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach((p,pi)=>{
         const xi=PAD_L+(p.h-SHOW_FROM)/(SHOW_TO-SHOW_FROM)*chartW;
-        const isHigh=p===pts.reduce((a,b)=>b.ht>a.ht?b:a); // rough high/low marker
-        // Determine if this point is a local max or min
         const idx=pts.indexOf(p);
         const prevHt=idx>0?pts[idx-1].ht:p.ht;
         const nextHt=idx<pts.length-1?pts[idx+1].ht:p.ht;
         const isLocalHigh=p.ht>prevHt&&p.ht>nextHt||pts.length===1;
-        const tickColor=isLocalHigh?'rgba(100,180,220,0.55)':'rgba(100,180,220,0.35)';
+        const tickColor=isLocalHigh?'rgba(100,180,220,0.55)':'rgba(100,180,220,0.30)';
         svg+=`<line x1="${xi.toFixed(1)}" y1="0" x2="${xi.toFixed(1)}" y2="${SWELL_H}" stroke="${tickColor}" stroke-width="1" stroke-dasharray="2,2"/>`;
         const arrow=isLocalHigh?'↑':'↓';
-        const labelY=isLocalHigh?10:SWELL_H-4;
-        svg+=`<text x="${xi.toFixed(1)}" y="${labelY}" text-anchor="middle" font-size="7" fill="rgba(80,160,210,0.85)" font-weight="500">${arrow} ${p.ht.toFixed(1)}m</text>`;
-        svg+=`<text x="${xi.toFixed(1)}" y="${labelY+9}" text-anchor="middle" font-size="6" fill="rgba(80,160,210,0.6)">${fmtTideTime(p.h)}</text>`;
+        // Stagger labels vertically so adjacent tides don't collide (odd index = slightly lower)
+        const labelY = pi%2===0 ? 9 : 17;
+        svg+=`<text x="${xi.toFixed(1)}" y="${labelY}" text-anchor="middle" font-size="6.5" fill="rgba(80,160,210,0.85)" font-weight="500">${arrow}${p.ht.toFixed(1)}m</text>`;
       });
     }
   }
@@ -1462,11 +1522,17 @@ function hourlySparkline(dd, diveWindow, tideInfo){
 
 async function fetchRain(){
   try{
-    const start=iso(-4), end=iso(0);
+    const start=iso(-4), end=iso(2); // past 4 days + next 2 days forecast
     const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=-33.87&longitude=151.21&daily=precipitation_sum&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end);
     const d=await r.json();
-    RAIN_TOTAL=(d.daily?.precipitation_sum||[]).reduce((a,b)=>a+(b||0),0);
-  }catch(e){ RAIN_TOTAL=null; }
+    const sums=d.daily?.precipitation_sum||[];
+    const dates=d.daily?.time||[];
+    const todayStr=iso(0);
+    // Past 4 days (days -4 to -1)
+    RAIN_TOTAL=sums.slice(0,4).reduce((a,b)=>a+(b||0),0);
+    // Forecast: today + tomorrow
+    RAIN_FORECAST=sums.filter((_,i)=>dates[i]>=todayStr).slice(0,2).reduce((a,b)=>a+(b||0),0);
+  }catch(e){ RAIN_TOTAL=null; RAIN_FORECAST=null; }
 }
 
 async function fetchAll(){
@@ -1582,7 +1648,7 @@ function renderVerdict(){
     : '';
 
   const tideStation = bestSite ? stationFor(bestSite) : 'fort-denison';
-  const {window:diveWindow, tideNote} = bestDiveWindow(d, tideStation, hd);
+  const {window:diveWindow, tideNote} = bestDiveWindow(d, tideStation, hd, bestSite);
 
   // Best site hero row
   const km = bestSite ? haversine(baseCoords.lat,baseCoords.lng,bestSite.lat,bestSite.lng) : null;
@@ -1666,9 +1732,17 @@ function vizTideNote(site, compact){
 }
 
 function rainWarn(site){
-  if(RAIN_TOTAL==null||RAIN_TOTAL<100) return '';
-  if(!RAIN_AFFECTED_REGIONS.includes(site.region)) return '';
-  return '<div style="margin-top:4px;font-size:.62rem;color:var(--maybe)">☔ '+RAIN_TOTAL.toFixed(0)+'mm rain past 4 days — McFadyen: Port Hacking &amp; Botany Bay viz likely degraded</div>';
+  let warns=[];
+  // McFadyen rule: >100mm past 4 days wrecks viz at Botany/Port Hacking
+  if(RAIN_TOTAL!=null&&RAIN_TOTAL>=100&&RAIN_AFFECTED_REGIONS.includes(site.region))
+    warns.push('☔ '+RAIN_TOTAL.toFixed(0)+'mm rain past 4 days — McFadyen: viz likely degraded here');
+  // Stormwater-sensitive harbour/bay sites
+  if(RAIN_TOTAL!=null&&RAIN_TOTAL>=25&&RAIN_HARBOUR_SITES.includes(site.id))
+    warns.push('☔ '+RAIN_TOTAL.toFixed(0)+'mm recent rain — stormwater runoff may affect viz');
+  // Forecast heavy rain incoming — warn at all runoff-sensitive sites
+  if(RAIN_FORECAST!=null&&RAIN_FORECAST>=20&&(RAIN_AFFECTED_REGIONS.includes(site.region)||RAIN_HARBOUR_SITES.includes(site.id)))
+    warns.push('🌧 '+RAIN_FORECAST.toFixed(0)+'mm rain forecast over next 2 days — plan for viz degradation');
+  return warns.map(w=>'<div style="margin-top:4px;font-size:.62rem;color:var(--maybe)">'+w+'</div>').join('');
 }
 
 function surgeInfo(dd, site, compact){
@@ -1735,7 +1809,7 @@ function renderSites(){
         rainWarn(site)+vizTideNote(site,true)+
         (activeWildlife.length?'<br>'+activeWildlife.map(w=>w.icon+' '+w.label).join(' · '):'')+
         '<br><span style="opacity:.55">'+site.region+' · '+km.toFixed(1)+'km · '+site.driveMin+'min drive</span>'+
-        hourlySparkline(dd, bestDiveWindow(dd?.date||'', stationFor(site), dd).window, {station:stationFor(site), dateKey:dd?.date||''})+
+        hourlySparkline(dd, bestDiveWindow(dd?.date||'', stationFor(site), dd, site).window, {station:stationFor(site), dateKey:dd?.date||''})+
       '</div>';
     return '<div class="feat-row" style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
       '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
@@ -1766,7 +1840,7 @@ function renderSites(){
   restRanked.forEach(e=>{const g=REGION_NCS[e.site.region]||'SS';ncsGrouped[g].push(e);});
 
   function buildSiteCard({site,r,dd,km}){
-    const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site), dd);
+    const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site), dd, site);
     const v=r.verdict.toLowerCase();
     const km_str=km<2?(km*1000).toFixed(0)+'m':km.toFixed(1)+'km';
     const tags=[];
