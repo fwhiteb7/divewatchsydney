@@ -498,21 +498,8 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 
 <!-- Now strip -->
 <div style="display:flex;justify-content:center;margin-bottom:12px;">
-<div id="now-strip" style="
-  display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
-  padding:7px 16px;
-  background:var(--deep); border:1px solid var(--rim); border-radius:20px;
-  font-size:.68rem; color:var(--muted); letter-spacing:.04em;
-">
-  <span style="font-size:.57rem;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);opacity:.8;white-space:nowrap">Sydney Now</span>
-  <span style="opacity:.2">|</span>
-  <span id="now-swell" class="pulse" style="color:var(--muted);white-space:nowrap">swell &mdash;</span>
-  <span style="opacity:.2">·</span>
-  <span id="now-wind"  class="pulse" style="color:var(--muted);white-space:nowrap">wind &mdash;</span>
-  <span style="opacity:.2">·</span>
-  <span id="now-temp"  class="pulse" style="color:var(--muted);white-space:nowrap">water &mdash;</span>
-  <span style="opacity:.2">·</span>
-  <span id="now-viz"   class="pulse" style="color:var(--muted);white-space:nowrap">viz &mdash;</span>
+<div id="now-strip" style="display:none">
+  <span id="now-swell"></span><span id="now-wind"></span><span id="now-temp"></span><span id="now-viz"></span>
 </div>
 </div>
 
@@ -1577,6 +1564,7 @@ async function geocodePostcode(pc){
 function render(){
   renderTabs();
   renderVerdict();
+  renderOffshoreCard();
   renderTable();
   renderSites();
 }
@@ -1637,60 +1625,65 @@ function renderVerdict(){
 
   const calBadge=cal?'<span class="cal-badge '+cal.type+'" style="margin-left:10px;vertical-align:middle;font-size:.62rem">'+cal.reason+'</span>':'';
 
-  // Use best site's data for the hero card; fall back to Sydney Harbour zone if no best site
-  const hd=bestDd||WX['Sydney Harbour']?.days?.find(x=>x.date===d)||WX['Botany / South']?.days?.find(x=>x.date===d);
-  // Use effective conditions for display if available, otherwise raw
-  const dispSwell = bestRes.eff?.swell!=null ? bestRes.eff.swell : hd?.swell;
-  const dispWind  = bestRes.eff?.wind!=null  ? bestRes.eff.wind  : hd?.wind;
-
-  const periodStr=hd?.period!=null
-    ? hd.period.toFixed(0)+'s'+(hd.period>=14?' ⚠ long':hd.period>=10?' mod':' short')
-    : '';
-
-  const tideStation = bestSite ? stationFor(bestSite) : 'fort-denison';
-  const {window:diveWindow, tideNote} = bestDiveWindow(d, tideStation, hd, bestSite);
-
-  // Best site hero row
-  const km = bestSite ? haversine(baseCoords.lat,baseCoords.lng,bestSite.lat,bestSite.lng) : null;
-  const kmStr = km!=null ? (km<2?(km*1000).toFixed(0)+'m':km.toFixed(1)+'km') : '';
-  const siteHero = bestSite && !cal?.blocked
-    ? '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08)">'+
-        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:.04em;color:var(--accent)">'+bestSite.name+'</div>'+
-        '<div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+bestSite.region+' · '+kmStr+' · '+bestSite.driveMin+'min drive'+(bestSite.entry==='boat'?' · <span style="color:#ff9040">BOAT</span>':'')+' · best site for this day</div>'+
-      '</div>'
-    : '';
-
-  const condGrid=hd&&!cal?.blocked?
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:0;padding:10px 12px;background:rgba(26,127,196,0.06);border-radius:6px;border:1px solid var(--border)">'+
-      '<div style="white-space:nowrap"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Swell <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
-        '<span style="color:'+condColor(dispSwell,PREFS.maxSwell)+'">'+dispSwell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.6rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(hd.swellDir)+'</span>':'')+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
-      '</div>'+
-      '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Wind <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
-        '<span style="color:'+condColor(dispWind,PREFS.maxWind)+'">'+dispWind.toFixed(0)+'kt '+(deg2cp(hd.windDir)||'')+'</span></div>'+
-      (hd.temp?'<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Water</div>'+
-        '<span style="color:'+(wetsuitRec(hd.temp)?.good?'var(--go)':'var(--muted)')+'">'+hd.temp.toFixed(1)+'°C</span> <span style="font-size:.6rem;color:var(--muted)">(typ.'+SYDNEY_TEMPS[new Date().getMonth()].toFixed(1)+'°C)</span></div>':'')+
-      '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Viz (est)</div>'+
-        '<span>'+vizStr(dispSwell,dispWind)+'</span></div>'+
-      '<div style="grid-column:1/-1"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Best window'+(tideNote?' (tide)':'')+'</div>'+
-        '<span style="color:var(--accent)">'+diveWindow+'</span>'+(tideNote?'<span style="font-size:.6rem;color:var(--muted);margin-left:8px">'+tideNote+'</span>':'')+
-      '</div>'+
-      hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
-    '</div>':'';
-
-  const sitesBlock=vt==='NO'&&!cal?.blocked?'<div style="color:var(--muted);margin-top:12px;font-size:.72rem">No sites within GO bar for this day.</div>':
-     cal?.blocked?'<div style="color:var(--muted);margin-top:10px;font-size:.72rem">'+cal.reason+'</div>':'';
+  const sitesBlock=cal?.blocked?'<div style="color:var(--muted);margin-top:10px;font-size:.72rem">'+cal.reason+'</div>':'';
 
   document.getElementById('verdict-area').innerHTML=
     (isPast?'<div style="filter:saturate(.22) opacity(.75)">':'')+
     '<div class="verdict-band '+vc+'">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
         '<div class="vl">'+vt+calBadge+'</div>'+
         '<div class="seasonal-badge" style="flex:1;min-width:180px;margin:0;align-self:center">'+seasonalContext()+'</div>'+
       '</div>'+
-      siteHero+
-      condGrid+
       sitesBlock+
     '</div>'+(isPast?'</div>':'')+'';
+}
+
+function renderOffshoreCard(){
+  const d=iso(winOffset-1);
+  // Raw offshore data — use Sydney Harbour zone as the representative offshore source
+  const hd=WX['Sydney Harbour']?.days?.find(x=>x.date===d)
+         ||WX['Eastern Suburbs']?.days?.find(x=>x.date===d)
+         ||WX['Botany / South']?.days?.find(x=>x.date===d);
+  if(!hd) return;
+
+  const periodStr=hd.period!=null
+    ? hd.period.toFixed(0)+'s'+(hd.period>=14?' ⚠ long':hd.period>=10?' mod':' short')
+    : '';
+  const tideStation='fort-denison';
+  const {window:diveWindow, tideNote}=bestDiveWindow(d, tideStation, hd, null);
+
+  const card=
+    '<div style="margin-top:10px;padding:10px 12px;background:rgba(26,127,196,0.06);border-radius:6px;border:1px solid var(--border)">'+
+    '<div style="font-size:.57rem;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);opacity:.8;margin-bottom:8px">Sydney Offshore</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">'+
+        '<div style="white-space:nowrap"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Swell <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
+          '<span style="color:'+condColor(hd.swell,PREFS.maxSwell)+'">'+hd.swell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.6rem;color:var(--accent)">'+deg2cp(hd.swellDir)+'</span>':'')+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
+        '</div>'+
+        '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Wind <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
+          '<span style="color:'+condColor(hd.wind,PREFS.maxWind)+'">'+hd.wind.toFixed(0)+'kt '+(deg2cp(hd.windDir)||'')+'</span></div>'+
+        (hd.temp?'<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Water</div>'+
+          '<span style="color:'+(wetsuitRec(hd.temp)?.good?'var(--go)':'var(--muted)')+'">'+hd.temp.toFixed(1)+'°C</span> <span style="font-size:.6rem;color:var(--muted)">(typ.'+SYDNEY_TEMPS[new Date().getMonth()].toFixed(1)+'°C)</span></div>':'')+
+        '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Viz (est)</div>'+
+          '<span>'+vizStr(hd.swell,hd.wind)+'</span></div>'+
+        '<div style="grid-column:1/-1"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Best window'+(tideNote?' (tide)':'')+'</div>'+
+          '<span style="color:var(--accent)">'+diveWindow+'</span>'+(tideNote?'<span style="font-size:.6rem;color:var(--muted);margin-left:8px">'+tideNote+'</span>':'')+
+        '</div>'+
+      '</div>'+
+      hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
+    '</div>';
+
+  // Inject below the now-strip pill — wrap pill + card in a block
+  const strip=document.getElementById('now-strip');
+  if(strip){
+    let offCard=document.getElementById('offshore-card');
+    if(!offCard){
+      offCard=document.createElement('div');
+      offCard.id='offshore-card';
+      offCard.style.cssText='width:100%;max-width:700px;margin:0 auto;';
+      strip.parentNode.insertBefore(offCard, strip.nextSibling);
+    }
+    offCard.innerHTML=card;
+  }
 }
 
 function renderTable(){ document.getElementById('sum-table-area').innerHTML=''; }
