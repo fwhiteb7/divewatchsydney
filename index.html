@@ -9,23 +9,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,900;1,400&family=Spline+Sans+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --ink:        #000000;
-  --deep:       #070709;
-  --mid:        #0c0c0f;
-  --surface:    #111114;
-  --rim:        #21212a;
-  --text:       #c8f0e8;
-  --muted:      #2a6858;
-  --accent:     #00ffcc;
-  --go:         #00ff88;
-  --maybe:      #ffdd00;
-  --no:         #ff3355;
-  --go-bg:      rgba(0,255,136,0.08);
-  --maybe-bg:   rgba(255,221,0,0.08);
-  --no-bg:      rgba(255,51,85,0.08);
-  /* aliases used by the Sources panel markup */
-  --card:       #111114;
-  --border:     #21212a;
+  --ink:        #f4f7fa;
+  --deep:       #f4f7fa;
+  --mid:        #edf2f7;
+  --surface:    #ffffff;
+  --rim:        #c8d8ea;
+  --text:       #1a3a5c;
+  --muted:      #5a7a9a;
+  --accent:     #1a7fc4;
+  --go:         #1aaa5e;
+  --maybe:      #c88010;
+  --no:         #d93535;
+  --go-bg:      #ffffff;
+  --maybe-bg:   #ffffff;
+  --no-bg:      #ffffff;
+  --card:       #ffffff;
+  --border:     #c8d8ea;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,29 +40,13 @@ body {
   overflow-x: hidden;
 }
 
-/* — Caustic background — */
+/* — Subtle ocean wash — */
 body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 160% 80% at 10%  5%, rgba(0,255,200,.06) 0%, transparent 50%),
-    radial-gradient(ellipse  90% 140% at 88% 92%, rgba(0,90,75,.10)   0%, transparent 55%),
-    radial-gradient(ellipse  70% 70%  at 55% 48%, rgba(0,220,180,.04) 0%, transparent 58%),
-    radial-gradient(ellipse  40% 40%  at 25% 75%, rgba(0,255,136,.04) 0%, transparent 45%);
-  animation: caustic 16s ease-in-out infinite alternate;
-}
-@keyframes caustic {
-  0%   { transform: scale(1)    rotate(0deg);   opacity:.65; }
-  40%  { transform: scale(1.05) rotate(.6deg);  opacity:1;   }
-  100% { transform: scale(.96)  rotate(-.5deg); opacity:.75; }
-}
-
-/* — Grain — */
-body::after {
-  content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
-  opacity:.25;
+    radial-gradient(ellipse 160% 80% at 10% 5%,  rgba(26,127,196,.06) 0%, transparent 55%),
+    radial-gradient(ellipse  90% 120% at 85% 90%, rgba(26,170,94,.05)  0%, transparent 55%);
 }
 
 .wrap {
@@ -85,7 +68,6 @@ body::after {
   font-size: clamp(1.9rem, 5.5vw, 2.8rem);
   letter-spacing: .05em; line-height: 1;
   color: var(--accent);
-  text-shadow: 0 0 40px rgba(0,255,224,.55), 0 0 90px rgba(0,255,224,.20);
 }
 .logo em { color: var(--text); opacity: .45; font-style: normal; font-weight: 300; }
 .issued-line {
@@ -119,10 +101,10 @@ body::after {
   font-family: 'Spline Sans Mono', monospace; font-size: .65rem; letter-spacing: .08em;
   padding: 5px 10px; transition: all .18s; white-space: nowrap;
 }
-.viz-btn   { color: #7eb8ff; border-color: rgba(126,184,255,.25); background: rgba(126,184,255,.06); }
-.viz-btn:hover   { background: rgba(126,184,255,.13); border-color: rgba(126,184,255,.55); }
-.abyss-btn { color: #ff9f50; border-color: rgba(255,159,80,.25); background: rgba(255,159,80,.05); }
-.abyss-btn:hover { background: rgba(255,159,80,.12); border-color: rgba(255,159,80,.55); }
+.viz-btn   { color: #185fa5; border-color: rgba(24,95,165,.25); background: rgba(24,95,165,.06); }
+.viz-btn:hover   { background: rgba(24,95,165,.12); border-color: rgba(24,95,165,.50); }
+.abyss-btn { color: #854f0b; border-color: rgba(133,79,11,.25); background: rgba(133,79,11,.05); }
+.abyss-btn:hover { background: rgba(133,79,11,.12); border-color: rgba(133,79,11,.50); }
 
 /* ── Dive thresholds (read-only) ── */
 .limits {
@@ -132,15 +114,15 @@ body::after {
 .limits-head {
   display: flex; align-items: center; justify-content: center; margin-bottom: 8px;
 }
-.limits-title { color: #57b88c; font-family: 'Spline Sans Mono', monospace; font-size: .65rem; letter-spacing: .12em; }
+.limits-title { color: var(--accent); font-family: 'Spline Sans Mono', monospace; font-size: .65rem; letter-spacing: .12em; }
 .limits-row {
   display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
   font-family: 'Spline Sans Mono', monospace;
 }
-.limits-sep { color: #1c3a30; }
+.limits-sep { color: var(--rim); }
 .limit { font-size: .68rem; }
 .limit .lab { color: var(--muted); letter-spacing: .04em; }
-.limit .go  { color: #57b88c; font-weight: 600; }
+.limit .go  { color: var(--go); font-weight: 600; }
 .limit .mid { color: var(--maybe); }
 .limit .bad { color: var(--no); }
 
@@ -186,8 +168,8 @@ body::after {
 /* Seasonal badge */
 .seasonal-badge {
   font-size: .65rem; color: var(--muted); margin-top: 6px;
-  padding: 5px 10px; background: rgba(0,255,224,.04);
-  border: 1px solid rgba(0,255,224,.12); border-radius: 4px;
+  padding: 5px 10px; background: rgba(26,127,196,.05);
+  border: 1px solid rgba(26,127,196,.18); border-radius: 4px;
   position: relative;
 }
 .seasonal-badge .sb-hi { color: var(--accent); }
@@ -205,18 +187,18 @@ body::after {
 .verdict-band.go    { border-color: var(--go);    background: var(--go-bg);    }
 .verdict-band.maybe { border-color: var(--maybe);  background: var(--maybe-bg); }
 .verdict-band.no    { border-color: var(--no);     background: var(--no-bg);    }
-.verdict-band.go::before    { background: var(--go);    opacity: .06; }
-.verdict-band.maybe::before { background: var(--maybe);  opacity: .06; }
-.verdict-band.no::before    { background: var(--no);     opacity: .06; }
+.verdict-band.go::before    { display:none; }
+.verdict-band.maybe::before { display:none; }
+.verdict-band.no::before    { display:none; }
 
 .vl {
   font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
   font-size: clamp(2rem, 6vw, 3.4rem); letter-spacing: .06em; line-height: 1;
   position: relative;
 }
-.go    .vl { color: var(--go);    text-shadow: 0 0 28px rgba(0,255,159,.65), 0 0 60px rgba(0,255,159,.25); }
-.maybe .vl { color: var(--maybe); text-shadow: 0 0 28px rgba(255,200,64,.65), 0 0 60px rgba(255,200,64,.20); }
-.no    .vl { color: var(--no);    text-shadow: 0 0 28px rgba(255,68,102,.65), 0 0 60px rgba(255,68,102,.20); }
+.go    .vl { color: var(--go);    }
+.maybe .vl { color: var(--maybe); }
+.no    .vl { color: var(--no);    }
 
 .vs { font-size: .78rem; color: var(--text); margin-top: 5px; opacity: .85; position: relative; }
 
@@ -234,7 +216,7 @@ body::after {
 .sum-table th.day-col { color: var(--text); }
 .sum-table td {
   text-align: center; padding: 5px 6px;
-  border-bottom: 1px solid rgba(22,40,64,.6);
+  border-bottom: 1px solid var(--rim);
   color: var(--text); vertical-align: middle;
 }
 .sum-table td.row-label {
@@ -281,8 +263,8 @@ body::after {
 .dot {
   width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
 }
-.go    .dot { background: var(--go);    box-shadow: 0 0 10px var(--go),    0 0 20px rgba(0,255,159,.3); }
-.maybe .dot { background: var(--maybe); box-shadow: 0 0 10px var(--maybe), 0 0 20px rgba(255,200,64,.3); }
+.go    .dot { background: var(--go);    }
+.maybe .dot { background: var(--maybe); }
 .no    .dot { background: var(--no);    }
 
 .card-info { flex: 1; min-width: 0; }
@@ -305,24 +287,24 @@ body::after {
   letter-spacing: .05em; text-transform: uppercase; margin-right: 3px;
   background: var(--mid); border: 1px solid var(--rim); color: var(--muted);
 }
-.tag.boat    { border-color: rgba(0,255,224,.40);  color: var(--accent); }
-.tag.buddy   { border-color: rgba(255,68,102,.45);  color: var(--no);     }
-.tag.deep    { border-color: rgba(255,200,64,.45);  color: var(--maybe);  }
-.tag.reserve { border-color: rgba(0,255,159,.35);   color: var(--go);     }
-.tag.shelter { border-color: rgba(0,255,224,.20);  color: var(--muted);  }
+.tag.boat    { border-color: rgba(26,127,196,.40);  color: var(--accent); }
+.tag.buddy   { border-color: rgba(217,53,53,.45);   color: var(--no);     }
+.tag.deep    { border-color: rgba(200,128,16,.45);  color: var(--maybe);  }
+.tag.reserve { border-color: rgba(26,170,94,.35);   color: var(--go);     }
+.tag.shelter { border-color: rgba(26,127,196,.25);  color: var(--muted);  }
 /* Seasonal wildlife badge */
 .wildlife-badge {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: .58rem; padding: 2px 7px; border-radius: 10px;
   font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
   letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
-  background: rgba(0,255,159,.10); border: 1px solid rgba(0,255,159,.35);
+  background: rgba(26,170,94,.10); border: 1px solid rgba(26,170,94,.35);
   color: var(--go); margin-right: 4px; margin-top: 3px;
 }
 .surge-warn {
   display: inline-block; font-size: .6rem; padding: 1px 6px; border-radius: 3px;
   font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: .04em;
-  background: rgba(255,200,64,.10); border: 1px solid rgba(255,200,64,.35); color: var(--maybe);
+  background: rgba(200,128,16,.10); border: 1px solid rgba(200,128,16,.35); color: var(--maybe);
 }
 .tide-advice { font-size: .65rem; color: var(--accent); opacity: .85; margin-top: 4px; }
 
@@ -380,13 +362,13 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 }
 .cal-badge.flight { background: var(--no-bg);    color: var(--no);    border: 1px solid rgba(255,68,102,.3); }
 .cal-badge.travel { background: var(--maybe-bg); color: var(--maybe); border: 1px solid rgba(255,200,64,.3); }
-.cal-badge.course { background: rgba(0,255,224,.08); color: var(--accent); border: 1px solid rgba(0,255,224,.25); }
+.cal-badge.course { background: rgba(26,127,196,.08); color: var(--accent); border: 1px solid rgba(26,127,196,.25); }
 
 .dd-row { margin: 2px 0; }
 .dd-row .lbl { color: var(--muted); }
 .dd-row .val { color: var(--text); }
 .dd-sites { margin-top: 8px; }
-.dd-site { padding: 4px 0; border-top: 1px solid rgba(22,40,64,.6); }
+.dd-site { padding: 4px 0; border-top: 1px solid var(--rim); }
 .dd-site-name {
   font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: .95rem;
 }
@@ -463,7 +445,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
   .card-cond {
     flex-basis: 100%; text-align: left; white-space: normal;
     line-height: 1.5; padding-top: 7px; margin-left: 17px;
-    border-top: 1px solid rgba(22,40,64,.5);
+    border-top: 1px solid var(--rim);
   }
   .card-cond:empty { display: none; }
   .card-body { padding: 0 12px 12px 17px; }
@@ -547,13 +529,9 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
   On iPhone open via Safari &rarr; share sheet &rarr; <em>Open in Browser</em>. Or tap Retry.
   <br><br><button onclick="refreshAll()">&#8635; Retry</button>
 </div>
-<div class="hybrid-layout" style="display:flex;gap:16px;align-items:flex-start">
-  <div style="flex:1.4;min-width:0">
-    <div id="verdict-area"></div>
-    <div id="sum-table-area"></div>
-  </div>
-  <div id="site-list-area" class="hybrid-sites" style="flex:1;min-width:0;border-left:1px solid rgba(255,255,255,.08);padding-left:16px"></div>
-</div>
+<div id="verdict-area"></div>
+<div id="sum-table-area"></div>
+<div id="site-list-area" style="display:none"></div>
 <div id="site-rest-area"></div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -563,7 +541,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
   <details id="sources-panel" style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
     <summary style="cursor:pointer;padding:0.85rem 1.2rem;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);list-style:none;display:flex;align-items:center;gap:.5rem;user-select:none;" onclick="">
       <span id="sources-arrow" style="display:inline-block;transition:transform .25s;font-size:.9rem;">▶</span>
-      Sources &amp; Calculations — where the data comes from
+      Credits &amp; How It Works
     </summary>
     <div style="padding:1.2rem 1.4rem;font-size:.73rem;line-height:1.65;color:var(--text);border-top:1px solid var(--border);">
 
@@ -582,11 +560,15 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:.35rem .6rem .35rem 0;font-weight:600;white-space:nowrap;color:var(--muted);">Visibility</td>
-            <td style="padding:.35rem 0;"><em>Inferred</em> from swell height and wind (see formula below). For measured viz check <a href="https://www.abyss.com.au/dive-conditions" target="_blank" style="color:var(--accent);">abyss.com.au</a>.</td>
+            <td style="padding:.35rem 0;"><em>Inferred</em> from swell and wind using a lookup table calibrated against McFadyen's seasonal records: swell &lt;0.25m + wind &lt;6kt → 12–18m; swell &lt;0.4m + wind &lt;10kt → 8–14m; swell &lt;0.6m + wind &lt;15kt → 6–10m; swell &lt;1.0m + wind &lt;20kt → 4–7m; else 2–4m. This is a rough guide only — for measured viz check <a href="https://www.abyss.com.au/dive-conditions" target="_blank" style="color:var(--accent);">Abyss</a> or <a href="https://www.viz.net.au" target="_blank" style="color:var(--accent);">VIZ</a>.</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:.35rem .6rem .35rem 0;font-weight:600;white-space:nowrap;color:var(--muted);">Site data</td>
             <td style="padding:.35rem 0;"><a href="https://www.michaelmcfadyenscuba.info" target="_blank" style="color:var(--accent);">michaelmcfadyenscuba.info</a> — Michael McFadyen's 30+ year field notes, 2,200+ logged dives. Depth ranges, exposure ratings, seasonal wildlife, tide advice, and conditions thresholds derived from his site write-ups.</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:.35rem .6rem .35rem 0;font-weight:600;white-space:nowrap;color:var(--muted);">VIZ</td>
+            <td style="padding:.35rem 0;"><a href="https://www.viz.net.au" target="_blank" style="color:var(--accent);">viz.net.au</a> — Sydney's 15,000-member dive community, a philanthropic initiative founded by Marco Bordieri. Produces a custom weekly dive site forecast model, georeferenced underwater maps for all major Sydney sites, citizen science tracking projects, and a weekly segment on ABC Radio Sydney. Referenced here for site forecasts (CC BY NC ND). Not a visibility-only resource — it's a full community knowledge hub.</td>
           </tr>
           <tr>
             <td style="padding:.35rem .6rem .35rem 0;font-weight:600;white-space:nowrap;color:var(--muted);">Calendar</td>
@@ -599,14 +581,14 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
       <div style="margin-bottom:1.1rem;">
         <div style="font-weight:700;font-size:.75rem;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-bottom:.45rem;">⚙️ Conditions Assessment Logic</div>
 
-        <div style="font-weight:600;margin-bottom:.25rem;color:var(--muted);">GO bar (default thresholds — adjust sliders to your limits)</div>
-        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(0,0,0,.12);border-radius:6px;font-family:monospace;font-size:.7rem;">
-          Wind &lt; 10 kt &nbsp;·&nbsp; Swell &lt; 0.5 m &nbsp;·&nbsp; Viz ≥ 5 m &nbsp;·&nbsp; Temp: no floor<br>
+        <div style="font-weight:600;margin-bottom:.25rem;color:var(--muted);">GO bar (Fred's thresholds)</div>
+        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(26,127,196,0.06);border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:.7rem;">
+          Wind &lt; 10 kt &nbsp;·&nbsp; Swell &lt; 1.0 m &nbsp;·&nbsp; Viz ≥ 5 m &nbsp;·&nbsp; Temp: no floor<br>
           Hard ceiling → wind ≥ 28 kt OR swell ≥ 2.5 m = <strong>NO, no exceptions</strong>
         </div>
 
         <div style="font-weight:600;margin-bottom:.25rem;color:var(--muted);">McFadyen thresholds (30 years of Sydney field notes)</div>
-        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(0,0,0,.12);border-radius:6px;font-family:monospace;font-size:.7rem;">
+        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(26,127,196,0.06);border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:.7rem;">
           &lt; 10 kt wind → GO for most ocean shore dives<br>
           10–15 kt → caution zone: always MAYBE regardless of other factors<br>
           ≥ 15 kt → unsuitable for boat &amp; most ocean shore dives<br>
@@ -614,7 +596,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
         </div>
 
         <div style="font-weight:600;margin-bottom:.25rem;color:var(--muted);">Shelter / exposure multipliers</div>
-        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(0,0,0,.12);border-radius:6px;font-family:monospace;font-size:.7rem;">
+        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(26,127,196,0.06);border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:.7rem;">
           Harbour sites (Clifton Gardens, Camp Cove…): swell ×0.03, wind ×0.52<br>
           Sheltered-direction sites: swell ×0.32, wind ×0.52<br>
           Exposed sites: swell ×1.30, wind ×1.25<br>
@@ -622,7 +604,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
         </div>
 
         <div style="font-weight:600;margin-bottom:.25rem;color:var(--muted);">Swell period multiplier (effective swell height)</div>
-        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(0,0,0,.12);border-radius:6px;font-family:monospace;font-size:.7rem;">
+        <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(26,127,196,0.06);border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:.7rem;">
           Period &lt; 8 s → ×0.80 &nbsp;(short chop, less impact)<br>
           Period 8–12 s → ×1.00 &nbsp;(baseline)<br>
           Period 12–16 s → ×1.20 &nbsp;(longer groundswell, more surge)<br>
@@ -633,7 +615,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
       <!-- SURGE DEPTH FORMULA -->
       <div style="margin-bottom:1.1rem;">
         <div style="font-weight:700;font-size:.75rem;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-bottom:.45rem;">🌊 McFadyen Surge-at-Depth Formula</div>
-        <div style="padding:.5rem .7rem;background:rgba(0,0,0,.12);border-radius:6px;font-family:monospace;font-size:.7rem;margin-bottom:.4rem;">
+        <div style="padding:.5rem .7rem;background:rgba(26,127,196,0.06);border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:.7rem;margin-bottom:.4rem;">
           surgeDepth (m) = period² ÷ 4
         </div>
         <div>E.g. a 12-second swell period: 12² ÷ 4 = 36 m. Surge is felt at depths shallower than this figure. Sites where this depth exceeds their max dive depth show a ⚠ surge warning on the card. Source: <a href="https://www.michaelmcfadyenscuba.info" target="_blank" style="color:var(--accent);">michaelmcfadyenscuba.info</a> page 813.</div>
@@ -693,19 +675,35 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 </script>
 
 <div class="footer-credit">
-  Site knowledge &amp; seasonal conditions data:&nbsp;
-  <a href="https://www.michaelmcfadyenscuba.info" target="_blank">michaelmcfadyenscuba.info</a>
-  &nbsp;&middot;&nbsp; &copy; Michael McFadyen 1990&ndash;2026<br>
-  30+ years of Sydney dive field notes &middot; 2,200+ logged dives &middot; used for personal, non-commercial purposes per site policy<br>
-  Community forecast: <a href="https://www.viz.net.au" target="_blank">viz.net.au</a> (CC BY NC ND) &middot;
-  Daily conditions: <a href="https://www.abyss.com.au/dive-conditions" target="_blank">Abyss Scuba</a><br>
-  Weather &amp; marine: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (CC BY 4.0) &middot;
-  Tides: Bureau of Meteorology &copy; Commonwealth of Australia
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 24px;text-align:left;margin-bottom:10px">
+    <div>
+      <div style="font-weight:700;color:var(--accent);margin-bottom:3px;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase">Site knowledge &amp; seasonal data</div>
+      <a href="https://www.michaelmcfadyenscuba.info" target="_blank" style="color:var(--accent)">michaelmcfadyenscuba.info</a><br>
+      &copy; Michael McFadyen 1990&ndash;2026<br>
+      30+ years of Sydney dive field notes &middot; 2,200+ logged dives<br>
+      <span style="opacity:.7">Used for personal, non-commercial purposes per site policy</span>
+    </div>
+    <div>
+      <div style="font-weight:700;color:var(--accent);margin-bottom:3px;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase">Sydney dive community</div>
+      <a href="https://www.viz.net.au" target="_blank" style="color:var(--accent)">viz.net.au</a> (CC BY NC ND)<br>
+      <span style="opacity:.7">15,000-member Sydney diving community · custom site forecast model · georeferenced dive maps · citizen science · weekly ABC Radio Sydney · © Marco Bordieri for VIZ</span>
+    </div>
+    <div>
+      <div style="font-weight:700;color:var(--accent);margin-bottom:3px;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase">Daily conditions</div>
+      <a href="https://www.abyss.com.au/dive-conditions" target="_blank" style="color:var(--accent)">Abyss Scuba</a><br>
+      <span style="opacity:.7">Measured visibility &amp; site conditions updated daily by Sydney's largest dive shop</span>
+    </div>
+    <div>
+      <div style="font-weight:700;color:var(--accent);margin-bottom:3px;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase">Weather &amp; marine</div>
+      <a href="https://open-meteo.com" target="_blank" style="color:var(--accent)">Open-Meteo</a> (CC BY 4.0) &middot; hourly swell, wind &amp; sea temp<br>
+      Tides: <a href="https://www.bom.gov.au/australia/tides/" target="_blank" style="color:var(--accent)">Bureau of Meteorology</a> &copy; Commonwealth of Australia
+    </div>
+  </div>
 </div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
   <a href="https://www.michaelmcfadyenscuba.info" target="_blank" class="ext-link-btn" style="border-color:rgba(180,140,255,.45);color:rgba(200,170,255,.9)" title="Michael McFadyen — 30 years of Sydney dive knowledge">McFADYEN ↗</a>
-  <a href="https://www.viz.net.au/divesite-forecast" target="_blank" class="ext-link-btn viz-btn" title="VIZ Community — site entry/exit forecast (CC BY NC ND)">🌊 VIZ ↗</a>
+  <a href="https://www.viz.net.au/divesite-forecast" target="_blank" class="ext-link-btn viz-btn" title="VIZ — Sydney dive community · custom forecast model · georeferenced maps · citizen science (CC BY NC ND)">🌊 VIZ ↗</a>
   <a href="https://www.abyss.com.au/dive-conditions" target="_blank" class="ext-link-btn abyss-btn" title="Abyss Scuba — daily measured viz &amp; conditions">ABYSS ↗</a>
   <a href="https://www.bom.gov.au/nsw/forecasts/index.shtml" target="_blank" class="ext-link-btn" style="border-color:rgba(80,160,255,.45);color:rgba(150,200,255,.9)" title="Bureau of Meteorology — NSW weather forecasts">BoM NSW ↗</a>
 </div>
@@ -1338,7 +1336,7 @@ function hourlySparkline(dd, diveWindow, tideInfo){
   const goSwell=PREFS.maxSwell;
 
   // Colour helper
-  const sc=s=>s>goSwell?'#ff3355':s>goSwell*0.7?'#ffdd00':'#00ffe0';
+  const sc=s=>s>goSwell?'#d93535':s>goSwell*0.7?'#c88010':'#1a7fc4';
 
   // x centre for slot i
   const cx=i=>PAD_L+i*slotW+slotW/2;
@@ -1350,10 +1348,10 @@ function hourlySparkline(dd, diveWindow, tideInfo){
   let svg='';
 
   // ── Y-axis labels ──
-  svg+=`<text x="${PAD_L-3}" y="${SWELL_H}" text-anchor="end" font-size="6.5" fill="#3a7868">0</text>`;
-  svg+=`<text x="${PAD_L-3}" y="${sy(swellCap/2)+4}" text-anchor="end" font-size="6.5" fill="#3a7868">${(swellCap/2).toFixed(1)}</text>`;
-  svg+=`<text x="${PAD_L-3}" y="${sy(swellCap)+4}" text-anchor="end" font-size="6.5" fill="#3a7868">${swellCap.toFixed(1)}</text>`;
-  svg+=`<text x="2" y="${SWELL_H/2+4}" text-anchor="start" font-size="6" fill="#3a7868" transform="rotate(-90,8,${SWELL_H/2})">swell m</text>`;
+  svg+=`<text x="${PAD_L-3}" y="${SWELL_H}" text-anchor="end" font-size="6.5" fill="#6a8aaa">0</text>`;
+  svg+=`<text x="${PAD_L-3}" y="${sy(swellCap/2)+4}" text-anchor="end" font-size="6.5" fill="#6a8aaa">${(swellCap/2).toFixed(1)}</text>`;
+  svg+=`<text x="${PAD_L-3}" y="${sy(swellCap)+4}" text-anchor="end" font-size="6.5" fill="#6a8aaa">${swellCap.toFixed(1)}</text>`;
+  svg+=`<text x="2" y="${SWELL_H/2+4}" text-anchor="start" font-size="6" fill="#6a8aaa" transform="rotate(-90,8,${SWELL_H/2})">swell m</text>`;
 
   // ── Baseline ──
   svg+=`<line x1="${PAD_L}" y1="${SWELL_H}" x2="${W-PAD_R}" y2="${SWELL_H}" stroke="rgba(255,255,255,.06)" stroke-width="0.5"/>`;
@@ -1386,23 +1384,21 @@ function hourlySparkline(dd, diveWindow, tideInfo){
     }
     if(h.hour%3===0){
       const lbl=h.hour<12?h.hour+'a':h.hour===12?'12p':(h.hour-12)+'p';
-      svg+=`<text x="${x.toFixed(1)}" y="${TOTAL_H}" text-anchor="middle" font-size="7" fill="#2a6858">${lbl}</text>`;
+      svg+=`<text x="${x.toFixed(1)}" y="${TOTAL_H}" text-anchor="middle" font-size="7" fill="#8a9aaa">${lbl}</text>`;
     }
   });
 
-  // ── Tide curve ──
+  // ── Tide shading + tick marks ──
   if(tideInfo){
     const {station, dateKey}=tideInfo;
     const exs=TIDES[station]?.[dateKey];
     if(exs?.length>=2){
-      // Convert extremes to decimal hours
       const sydHour=dt=>{
         const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});
         const [h,m]=s.split(':').map(Number); return h+m/60;
       };
       const pts=exs.map(e=>({h:sydHour(e.dt), ht:e.height})).sort((a,b)=>a.h-b.h);
       const tideCap=Math.max(2, ...pts.map(p=>p.ht));
-      // Cosine interpolation between consecutive extremes
       const tideAtHour=hr=>{
         for(let i=0;i<pts.length-1;i++){
           if(hr>=pts[i].h&&hr<=pts[i+1].h){
@@ -1412,19 +1408,36 @@ function hourlySparkline(dd, diveWindow, tideInfo){
         }
         return hr<pts[0].h?pts[0].ht:pts[pts.length-1].ht;
       };
-      // Overlay tide line on swell row — scaled to swell row height
-      const tidePts=hrs.map((h,i)=>{
+      // Background shading: tide polygon behind bars
+      const shadePts=hrs.map((h,i)=>{
         const ht=tideAtHour(h.hour);
         const ty=SWELL_H-Math.round((ht/tideCap)*SWELL_H);
         return `${cx(i).toFixed(1)},${ty}`;
       });
-      svg+=`<polyline points="${tidePts.join(' ')}" fill="none" stroke="rgba(100,200,240,0.65)" stroke-width="1.5" stroke-linejoin="round"/>`;
-      // Dot + label at each high/low extreme
+      // Close polygon along baseline
+      const firstX=cx(0), lastX=cx(hrs.length-1);
+      svg+=`<polygon points="${firstX},${SWELL_H} ${shadePts.join(' ')} ${lastX},${SWELL_H}" fill="rgba(100,180,220,0.10)" stroke="none"/>`;
+      // Vertical dashed tick at each high/low extreme + label
+      const fmtTideTime=h=>{
+        const hh=Math.floor(h), mm=Math.round((h%1)*60);
+        const period=hh<12?'am':'pm';
+        const disp=hh%12||12;
+        return `${disp}:${String(mm).padStart(2,'0')}${period}`;
+      };
       pts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach(p=>{
         const xi=PAD_L+(p.h-SHOW_FROM)/(SHOW_TO-SHOW_FROM)*chartW;
-        const ty=SWELL_H-Math.round((p.ht/tideCap)*SWELL_H);
-        svg+=`<circle cx="${xi.toFixed(1)}" cy="${ty}" r="2.5" fill="rgba(100,200,240,0.85)"/>`;
-        svg+=`<text x="${xi.toFixed(1)}" y="${ty-4}" text-anchor="middle" font-size="6.5" fill="rgba(100,200,240,0.9)" font-weight="600">${p.ht.toFixed(1)}m</text>`;
+        const isHigh=p===pts.reduce((a,b)=>b.ht>a.ht?b:a); // rough high/low marker
+        // Determine if this point is a local max or min
+        const idx=pts.indexOf(p);
+        const prevHt=idx>0?pts[idx-1].ht:p.ht;
+        const nextHt=idx<pts.length-1?pts[idx+1].ht:p.ht;
+        const isLocalHigh=p.ht>prevHt&&p.ht>nextHt||pts.length===1;
+        const tickColor=isLocalHigh?'rgba(100,180,220,0.55)':'rgba(100,180,220,0.35)';
+        svg+=`<line x1="${xi.toFixed(1)}" y1="0" x2="${xi.toFixed(1)}" y2="${SWELL_H}" stroke="${tickColor}" stroke-width="1" stroke-dasharray="2,2"/>`;
+        const arrow=isLocalHigh?'↑':'↓';
+        const labelY=isLocalHigh?10:SWELL_H-4;
+        svg+=`<text x="${xi.toFixed(1)}" y="${labelY}" text-anchor="middle" font-size="7" fill="rgba(80,160,210,0.85)" font-weight="500">${arrow} ${p.ht.toFixed(1)}m</text>`;
+        svg+=`<text x="${xi.toFixed(1)}" y="${labelY+9}" text-anchor="middle" font-size="6" fill="rgba(80,160,210,0.6)">${fmtTideTime(p.h)}</text>`;
       });
     }
   }
@@ -1582,7 +1595,7 @@ function renderVerdict(){
     : '';
 
   const condGrid=hd&&!cal?.blocked?
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:0;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:6px">'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:0;padding:10px 12px;background:rgba(26,127,196,0.06);border-radius:6px;border:1px solid var(--border)">'+
       '<div style="white-space:nowrap"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Swell <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
         '<span style="color:'+condColor(dispSwell,PREFS.maxSwell)+'">'+dispSwell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.6rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(hd.swellDir)+'</span>':'')+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
       '</div>'+
