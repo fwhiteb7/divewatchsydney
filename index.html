@@ -13,10 +13,10 @@
   --deep:       #f4f7fa;
   --mid:        #edf2f7;
   --surface:    #ffffff;
-  --rim:        #c8d8ea;
-  --text:       #1a3a5c;
-  --muted:      #5a7a9a;
-  --accent:     #1a7fc4;
+  --rim:        #b8ccde;
+  --text:       #1a3060;
+  --muted:      #5a789a;
+  --accent:     #003087;
   --go:         #1aaa5e;
   --maybe:      #c88010;
   --no:         #d93535;
@@ -24,7 +24,7 @@
   --maybe-bg:   #ffffff;
   --no-bg:      #ffffff;
   --card:       #ffffff;
-  --border:     #c8d8ea;
+  --border:     #b8ccde;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,8 +45,8 @@ body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 160% 80% at 10% 5%,  rgba(26,127,196,.06) 0%, transparent 55%),
-    radial-gradient(ellipse  90% 120% at 85% 90%, rgba(26,170,94,.05)  0%, transparent 55%);
+    radial-gradient(ellipse 160% 80% at 10% 5%,  rgba(0,48,135,.05) 0%, transparent 55%),
+    radial-gradient(ellipse  90% 120% at 85% 90%, rgba(26,170,94,.04)  0%, transparent 55%);
 }
 
 .wrap {
@@ -168,8 +168,8 @@ body::before {
 /* Seasonal badge */
 .seasonal-badge {
   font-size: .65rem; color: var(--muted); margin-top: 6px;
-  padding: 5px 10px; background: rgba(26,127,196,.05);
-  border: 1px solid rgba(26,127,196,.18); border-radius: 4px;
+  padding: 5px 10px; background: rgba(0,48,135,.04);
+  border: 1px solid rgba(0,48,135,.15); border-radius: 4px;
   position: relative;
 }
 .seasonal-badge .sb-hi { color: var(--accent); }
@@ -178,15 +178,15 @@ body::before {
 
 /* ── Verdict band ── */
 .verdict-band {
-  padding: 16px 20px; border-radius: 8px; margin-bottom: 13px;
+  padding: 16px 20px; border-radius: 10px; margin-bottom: 13px;
   border: 1px solid; position: relative; overflow: hidden;
 }
 .verdict-band::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;
 }
-.verdict-band.go    { border-color: var(--go);    background: var(--go-bg);    }
-.verdict-band.maybe { border-color: var(--maybe);  background: var(--maybe-bg); }
-.verdict-band.no    { border-color: var(--no);     background: var(--no-bg);    }
+.verdict-band.go    { border-color: rgba(26,170,94,.45);  background: rgba(26,170,94,.06); }
+.verdict-band.maybe { border-color: rgba(200,128,16,.45); background: rgba(200,128,16,.06); }
+.verdict-band.no    { border-color: rgba(217,53,53,.45);  background: rgba(217,53,53,.06); }
 .verdict-band.go::before    { display:none; }
 .verdict-band.maybe::before { display:none; }
 .verdict-band.no::before    { display:none; }
@@ -473,28 +473,11 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
     <div class="issued-line"><span id="issued-date"></span></div>
   </div>
   <div class="header-right">
-    <div class="postcode-wrap">
-      <label>YOUR POSTCODE</label>
-      <input type="text" id="postcode" value="" maxlength="4" placeholder="2000">
-    </div>
     <button class="refresh-btn" onclick="refreshAll()">&#8635; REFRESH</button>
   </div>
 </div>
 
-<!-- Dive thresholds (read-only) -->
-<div class="limits">
-  <div class="limits-head">
-    <span class="limits-title">DIVE THRESHOLDS</span>
-  </div>
-  <div class="limits-row">
-    <span class="limit"><span class="lab">SWELL</span> <span class="go">Go &lt;0.5m</span> <span class="mid">Maybe 0.5&ndash;1m</span> <span class="bad">No &gt;1.0m</span></span>
-    <span class="limits-sep">|</span>
-    <span class="limit"><span class="lab">WIND</span> <span class="go">Go &lt;10kt</span> <span class="mid">Maybe 10&ndash;15kt</span> <span class="bad">No &gt;15kt</span></span>
-    <span class="limits-sep">|</span>
-    <span class="limit"><span class="lab">TEMP</span> <span class="go">Go &gt;19&deg;C 5mm</span> <span class="mid">&le;18&deg;C 7mm/DrySuit</span></span>
-  </div>
   <div id="zone-fail-banner" style="display:none;background:rgba(255,68,102,.12);border:1px solid rgba(255,68,102,.3);border-radius:8px;padding:10px 16px;font-size:.75rem;color:var(--no);margin-top:10px;"></div>
-</div>
 
 <!-- Now strip -->
 <div style="display:flex;justify-content:center;margin-bottom:12px;">
@@ -962,6 +945,93 @@ function assess(site, dayData, prefs){
   return { verdict:'GO', reason:'Within GO bar'+wsNote+surgeNote+harbourRawNote, eff:{swell:es,wind:ew} };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY STRING — natural-language reason for GO/MAYBE verdict
+// ─────────────────────────────────────────────────────────────────────────────
+function whyString(site, dayData, result){
+  const parts = [];
+  const eff = result.eff || {};
+  const es = eff.swell ?? dayData?.swell;
+  const ew = eff.wind  ?? dayData?.wind;
+  if(!dayData) return '';
+
+  // Shelter character
+  if(site.shelterDir === 'harbour'){
+    parts.push('harbour sheltered');
+  } else if(Array.isArray(site.shelterDir) && site.shelterDir.length){
+    const swcp = dayData.swellDir != null ? deg2cp(dayData.swellDir) : null;
+    const sheltered = swcp && site.shelterDir.some(d => d === swcp || Math.abs(['N','NE','E','SE','S','SW','W','NW'].indexOf(d) - ['N','NE','E','SE','S','SW','W','NW'].indexOf(swcp)) <= 1);
+    if(sheltered) parts.push(deg2cp(dayData.swellDir)+' swell sheltered');
+    else if(es != null && es < dayData.swell * 0.5) parts.push('partially sheltered');
+  }
+
+  // Wind character
+  if(dayData.wind != null && dayData.windDir != null){
+    const wcp = deg2cp(dayData.windDir);
+    const isOffshore = Array.isArray(site.shelterDir) && site.shelterDir.some(d => d === wcp);
+    const isHarbour  = site.shelterDir === 'harbour';
+    if(dayData.wind <= 5)        parts.push('wind calm');
+    else if(isOffshore)          parts.push('wind '+wcp+' '+dayData.wind.toFixed(0)+'kt offshore');
+    else if(isHarbour && dayData.wind <= 12) parts.push('wind light in harbour');
+    else                         parts.push('wind '+wcp+' '+dayData.wind.toFixed(0)+'kt');
+  }
+
+  // Swell character
+  if(es != null){
+    if(es < 0.1)       parts.push('swell negligible');
+    else if(es < 0.3)  parts.push('swell flat '+es.toFixed(2)+'m');
+    else if(es < 0.6)  parts.push('swell easy '+es.toFixed(2)+'m');
+    else               parts.push('swell '+es.toFixed(2)+'m');
+  }
+
+  // Period flag
+  if(dayData.period != null){
+    if(dayData.period >= 14) parts.push('⚠ long period '+dayData.period.toFixed(0)+'s');
+  }
+
+  // Tide character
+  const station = REGION_STATION[site.region] || 'fort-denison';
+  const exs = TIDES[station]?.[dayData.date];
+  if(exs?.length){
+    const sydHr = dt => { const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false}); const[h,m]=s.split(':').map(Number); return h+m/60; };
+    const daytimeHighs = exs.filter(p => p.type==='High' && sydHr(p.dt)>=6 && sydHr(p.dt)<=14);
+    const daytimeLows  = exs.filter(p => p.type==='Low'  && sydHr(p.dt)>=6 && sydHr(p.dt)<=14);
+    const te = site.tideEffect || 'prefer_high';
+    if(te==='prefer_high' && daytimeHighs.length){
+      const h=daytimeHighs[0]; const hr=sydHr(h.dt);
+      const label = hr<=10 ? 'incoming high' : hr<=14 ? 'high tide at '+Math.round(hr)+'am' : 'high tide later';
+      parts.push(label+' ('+h.height.toFixed(1)+'m)');
+    } else if(te==='avoid_high' && daytimeLows.length){
+      const l=daytimeLows[0];
+      parts.push('low tide '+Math.round(sydHr(l.dt))+'am — good entry');
+    } else if(te==='avoid_low' && daytimeHighs.length){
+      const h=daytimeHighs[0];
+      parts.push('mid-tide rising — access clear');
+    }
+  }
+
+  // Viz hint
+  if(es != null && ew != null){
+    const v = vizStr(es, ew);
+    if(v) parts.push('viz '+v);
+  }
+
+  return parts.join(' · ');
+}
+
+function surgeDepthCallout(dayData, site){
+  if(!dayData?.period || !site?.depthMax) return '';
+  const surgeD = Math.round((dayData.period * dayData.period) / 4);
+  const maxD = site.depthMax;
+  const color = surgeD >= maxD ? 'var(--maybe)' : 'var(--go)';
+  const label = surgeD >= maxD
+    ? '⚠ surge throughout (to '+surgeD+'m)'
+    : surgeD > (site.depthMin||0)
+      ? 'surge-free below '+surgeD+'m'
+      : 'surge-free to max depth';
+  return '<span style="font-size:.6rem;color:'+color+';white-space:nowrap">'+label+' · '+dayData.period.toFixed(0)+'s</span>';
+}
+
 function dayBestVerdict(dateKey){
   let best='NO';
   for(const site of SITES){
@@ -1413,8 +1483,8 @@ function hourlySparkline(dd, diveWindow, tideInfo){
 
   // ── GO bar (dashed) ──
   const goY=sy(goSwell);
-  svg+=`<line x1="${PAD_L}" y1="${goY}" x2="${W-PAD_R}" y2="${goY}" stroke="#00ffe0" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.35"/>`;
-  svg+=`<text x="${W-PAD_R+1}" y="${goY+3}" font-size="6" fill="#00ffe0" opacity="0.5">GO</text>`;
+  svg+=`<line x1="${PAD_L}" y1="${goY}" x2="${W-PAD_R}" y2="${goY}" stroke="#888" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/>`;
+  svg+=`<text x="${W-PAD_R+1}" y="${goY+3}" font-size="6" fill="#888" opacity="0.7">GO</text>`;
 
   // ── Dive window highlight ──
   const {start:winStartH, end:winEndH}=parseWindowHours(diveWindow);
@@ -1425,8 +1495,8 @@ function hourlySparkline(dd, diveWindow, tideInfo){
     const wx0=PAD_L+diveStartIdx*slotW;
     const wx1=PAD_L+(diveEndIdxFwd+1)*slotW;
     const winW=wx1-wx0;
-    svg+=`<rect x="${wx0}" y="0" width="${winW}" height="${SWELL_H}" rx="2" fill="rgba(0,255,200,0.06)" stroke="rgba(0,255,200,0.18)" stroke-width="0.6"/>`;
-    svg+=`<text x="${wx0+winW/2}" y="${-3}" text-anchor="middle" font-size="6.5" fill="rgba(0,255,200,0.55)">${diveWindow||'best window'}</text>`;
+    svg+=`<rect x="${wx0}" y="0" width="${winW}" height="${SWELL_H}" rx="2" fill="rgba(26,127,196,0.09)" stroke="rgba(26,127,196,0.45)" stroke-width="0.6"/>`;
+    svg+=`<text x="${wx0+winW/2}" y="${-3}" text-anchor="middle" font-size="6.5" fill="#1a7fc4" font-weight="600">${diveWindow||'best window'}</text>`;
   }
 
   // ── Swell bars ──
@@ -1507,6 +1577,141 @@ function hourlySparkline(dd, diveWindow, tideInfo){
   `</div>`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SITE SCORE CHART  — hourly quality curve (0–100%) per site
+// ─────────────────────────────────────────────────────────────────────────────
+function siteScoreChart(site, dd, dateKey, diveWindow){
+  if(!dd?.hours?.length) return '';
+  const SHOW_FROM=5, SHOW_TO=20;
+  const hrs=dd.hours.filter(h=>h.hour>=SHOW_FROM&&h.hour<=SHOW_TO);
+  if(!hrs.length) return '';
+
+  const W=520, PAD_L=30, PAD_R=10;
+  const H=72, LABEL_H=14, TOTAL_H=H+LABEL_H;
+  const chartW=W-PAD_L-PAD_R;
+  const n=hrs.length;
+  const slotW=chartW/n;
+
+  // Quality score per hour: 100 = perfect, 0 = undiveable
+  function hourScore(h){
+    const {swell:es, wind:ew}=shield(site, h.swell, h.wind, h.windDir||0, h.swellDir||0, h.period);
+    let pf=1;
+    if(h.period!=null){if(h.period<8)pf=0.80;else if(h.period<12)pf=1.00;else if(h.period<16)pf=1.20;else pf=1.40;}
+    const effSwell=es*pf;
+    const sw=Math.min(effSwell/Math.max(PREFS.maxSwell,0.01), 2);
+    const wd=Math.min(ew/Math.max(PREFS.maxWind,1), 2);
+    return Math.max(0, Math.min(100, Math.round((1-(sw*0.6+wd*0.4)*0.7)*100)));
+  }
+
+  const scores=hrs.map(h=>({hour:h.hour, q:hourScore(h)}));
+
+  // y position for a quality score (100% = top, 0% = bottom)
+  const qy=q=>Math.round((1-q/100)*H);
+
+  // Colour for score
+  const qc=q=>q>=67?'#1aaa5e':q>=33?'#c88010':'#d93535';
+
+  // x centre
+  const cx=i=>PAD_L+i*slotW+slotW/2;
+
+  let svg='';
+
+  // ── Tide background polygon ──
+  const station=stationFor(site);
+  const exs=TIDES[station]?.[dateKey];
+  if(exs?.length>=2){
+    const sydHour=dt=>{const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});const[h,m]=s.split(':').map(Number);return h+m/60;};
+    const pts=exs.map(e=>({h:sydHour(e.dt),ht:e.height})).sort((a,b)=>a.h-b.h);
+    const tideCap=Math.max(2,...pts.map(p=>p.ht));
+    const tideAtHour=hr=>{
+      for(let i=0;i<pts.length-1;i++){
+        if(hr>=pts[i].h&&hr<=pts[i+1].h){
+          const t=(hr-pts[i].h)/(pts[i+1].h-pts[i].h);
+          return (pts[i].ht+pts[i+1].ht)/2-(pts[i+1].ht-pts[i].ht)/2*Math.cos(Math.PI*t);
+        }
+      }
+      return hr<pts[0].h?pts[0].ht:pts[pts.length-1].ht;
+    };
+    const shadePts=hrs.map((h,i)=>{
+      const ht=tideAtHour(h.hour);
+      const ty=H-Math.round((ht/tideCap)*H);
+      return `${cx(i).toFixed(1)},${ty}`;
+    });
+    const firstX=cx(0), lastX=cx(n-1);
+    svg+=`<polygon points="${firstX},${H} ${shadePts.join(' ')} ${lastX},${H}" fill="rgba(100,180,220,0.10)" stroke="none"/>`;
+    // Tide tick marks
+    pts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach((p,pi)=>{
+      const xi=PAD_L+(p.h-SHOW_FROM)/(SHOW_TO-SHOW_FROM)*chartW;
+      const idx=pts.indexOf(p);
+      const prevHt=idx>0?pts[idx-1].ht:p.ht;
+      const nextHt=idx<pts.length-1?pts[idx+1].ht:p.ht;
+      const isHigh=p.ht>prevHt&&p.ht>nextHt||pts.length===1;
+      svg+=`<line x1="${xi.toFixed(1)}" y1="0" x2="${xi.toFixed(1)}" y2="${H}" stroke="${isHigh?'rgba(100,180,220,0.45)':'rgba(100,180,220,0.22)'}" stroke-width="1" stroke-dasharray="2,2"/>`;
+      const labelY=pi%2===0?9:17;
+      svg+=`<text x="${xi.toFixed(1)}" y="${labelY}" text-anchor="middle" font-size="6.5" fill="rgba(80,160,210,0.75)" font-weight="500">${isHigh?'↑':'↓'}${p.ht.toFixed(1)}m</text>`;
+    });
+  }
+
+  // ── Threshold lines ──
+  svg+=`<line x1="${PAD_L}" y1="${qy(67)}" x2="${W-PAD_R}" y2="${qy(67)}" stroke="#1aaa5e" stroke-width="0.7" stroke-dasharray="3,3" opacity="0.35"/>`;
+  svg+=`<text x="${W-PAD_R+2}" y="${qy(67)+3}" font-size="6" fill="#1aaa5e" opacity="0.55">GO</text>`;
+  svg+=`<line x1="${PAD_L}" y1="${qy(33)}" x2="${W-PAD_R}" y2="${qy(33)}" stroke="#c88010" stroke-width="0.7" stroke-dasharray="3,3" opacity="0.35"/>`;
+  svg+=`<text x="${W-PAD_R+2}" y="${qy(33)+3}" font-size="6" fill="#c88010" opacity="0.55">?</text>`;
+
+  // ── Y-axis labels ──
+  svg+=`<text x="${PAD_L-3}" y="${H}" text-anchor="end" font-size="6.5" fill="#6a8aaa">0%</text>`;
+  svg+=`<text x="${PAD_L-3}" y="${qy(50)+3}" text-anchor="end" font-size="6.5" fill="#6a8aaa">50</text>`;
+  svg+=`<text x="${PAD_L-3}" y="${qy(100)+3}" text-anchor="end" font-size="6.5" fill="#6a8aaa">100</text>`;
+  svg+=`<text x="2" y="${H/2+4}" text-anchor="start" font-size="6" fill="#6a8aaa" transform="rotate(-90,8,${H/2})">quality</text>`;
+
+  // ── Dive window highlight ──
+  const {start:winStartH, end:winEndH}=parseWindowHours(diveWindow);
+  const diveStartIdx=hrs.findIndex(h=>h.hour>=winStartH);
+  const diveEndIdx=[...hrs].reverse().findIndex(h=>h.hour<=winEndH);
+  const diveEndIdxFwd=diveEndIdx>=0?hrs.length-1-diveEndIdx:-1;
+  if(diveStartIdx>=0&&diveEndIdxFwd>=diveStartIdx){
+    const wx0=PAD_L+diveStartIdx*slotW;
+    const wx1=PAD_L+(diveEndIdxFwd+1)*slotW;
+    svg+=`<rect x="${wx0}" y="0" width="${wx1-wx0}" height="${H}" rx="2" fill="rgba(26,127,196,0.06)" stroke="rgba(26,127,196,0.35)" stroke-width="0.6"/>`;
+    svg+=`<text x="${wx0+(wx1-wx0)/2}" y="-3" text-anchor="middle" font-size="6.5" fill="#1a7fc4" font-weight="600">${diveWindow||'best window'}</text>`;
+  }
+
+  // ── Smooth coloured curve (Catmull-Rom → cubic bezier) ──
+  const pts=scores.map((s,i)=>({x:cx(i), y:qy(s.q), q:s.q}));
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[Math.max(0,i-1)];
+    const p1=pts[i];
+    const p2=pts[i+1];
+    const p3=pts[Math.min(pts.length-1,i+2)];
+    const cp1x=p1.x+(p2.x-p0.x)/6, cp1y=p1.y+(p2.y-p0.y)/6;
+    const cp2x=p2.x-(p3.x-p1.x)/6, cp2y=p2.y-(p3.y-p1.y)/6;
+    const segColor=qc((p1.q+p2.q)/2);
+    svg+=`<path d="M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}" fill="none" stroke="${segColor}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>`;
+  }
+  // Hour labels on x axis only
+  scores.forEach((s,i)=>{
+    if(s.hour%3===0){
+      const lbl=s.hour<12?s.hour+'a':s.hour===12?'12p':(s.hour-12)+'p';
+      svg+=`<text x="${cx(i).toFixed(1)}" y="${TOTAL_H}" text-anchor="middle" font-size="7" fill="#8a9aaa">${lbl}</text>`;
+    }
+  });
+
+  // ── Build warning ──
+  let buildNote='';
+  if(dd.swellMax&&dd.swellMax>dd.swell+0.4)
+    buildNote=`<div style="font-size:.6rem;color:#c88010;margin-top:3px">⬆ swell builds to ${dd.swellMax.toFixed(1)}m later · dive early</div>`;
+  else if(dd.windMax&&dd.windMax>dd.wind+5)
+    buildNote=`<div style="font-size:.6rem;color:#c88010;margin-top:3px">⬆ wind builds to ${dd.windMax.toFixed(0)}kt later · dive early</div>`;
+
+  return `<div style="grid-column:1/-1;margin-top:6px">`+
+    `<div style="color:var(--muted);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Hourly forecast</div>`+
+    `<svg viewBox="0 0 ${W} ${TOTAL_H+4}" width="100%" style="display:block;overflow:visible">`+
+      svg+
+    `</svg>`+
+    buildNote+
+  `</div>`;
+}
+
 async function fetchRain(){
   try{
     const start=iso(-4), end=iso(2); // past 4 days + next 2 days forecast
@@ -1560,6 +1765,33 @@ async function geocodePostcode(pc){
 // ─────────────────────────────────────────────────────────────────────────────
 // RENDER
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Persist which NCS sections and site cards are open across day-tab switches
+const openSiteIds = new Set();
+const openNcsSections = new Set();
+
+function toggleSiteCard(el){
+  const sid = el.dataset.sid;
+  el.classList.toggle('open');
+  if(el.classList.contains('open')) openSiteIds.add(sid);
+  else openSiteIds.delete(sid);
+}
+
+function reapplyOpenSites(){
+  // First re-open any NCS sections that were open
+  openNcsSections.forEach(key=>{
+    const el=document.getElementById('ncs-'+key);
+    if(!el) return;
+    el.style.display='';
+    const chev=document.querySelector('.ncs-chev-'+key);
+    if(chev) chev.style.transform='';
+  });
+  // Then re-open individual site cards (may be inside those sections)
+  openSiteIds.forEach(sid=>{
+    const el=document.querySelector('.site-card[data-sid="'+sid+'"]');
+    if(el) el.classList.add('open');
+  });
+}
 
 function render(){
   renderTabs();
@@ -1625,6 +1857,7 @@ function renderVerdict(){
 
   const calBadge=cal?'<span class="cal-badge '+cal.type+'" style="margin-left:10px;vertical-align:middle;font-size:.62rem">'+cal.reason+'</span>':'';
 
+
   const sitesBlock=cal?.blocked?'<div style="color:var(--muted);margin-top:10px;font-size:.72rem">'+cal.reason+'</div>':'';
 
   document.getElementById('verdict-area').innerHTML=
@@ -1652,24 +1885,44 @@ function renderOffshoreCard(){
   const tideStation='fort-denison';
   const {window:diveWindow, tideNote}=bestDiveWindow(d, tideStation, hd, null);
 
+  const swellCol=condColor(hd.swell,PREFS.maxSwell);
+  const windCol=condColor(hd.wind,PREFS.maxWind);
+  const tempCol=hd.temp?(wetsuitRec(hd.temp)?.good?'var(--go)':'var(--muted)'):'var(--muted)';
+  const typTemp=SYDNEY_TEMPS[new Date().getMonth()].toFixed(1);
+  const tempDiff=hd.temp?(hd.temp-parseFloat(typTemp)):null;
+  const tempDiffStr=tempDiff!=null?(tempDiff>=0?'+':'')+tempDiff.toFixed(1)+'° avg':'';
+
+  const metricCard=(label,big,sub)=>
+    '<div style="background:var(--mid);border:1px solid var(--border);border-radius:7px;padding:10px 12px;min-width:0">'+
+      '<div style="font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px">'+label+'</div>'+
+      '<div style="font-size:1.15rem;font-weight:700;line-height:1.1;color:var(--text)">'+big+'</div>'+
+      (sub?'<div style="font-size:.58rem;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div>':'')+
+    '</div>';
+
+  const swellBig='<span style="color:'+swellCol+'">'+hd.swell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.75rem;color:var(--accent);opacity:.7">'+deg2cp(hd.swellDir)+'</span>':'');
+  const windBig='<span style="color:'+windCol+'">'+hd.wind.toFixed(0)+'kt</span>'+(hd.windDir!=null?' <span style="font-size:.75rem;color:var(--accent);opacity:.7">'+deg2cp(hd.windDir)+'</span>':'');
+  const waterBig=hd.temp?'<span style="color:'+tempCol+'">'+hd.temp.toFixed(1)+'°C</span>':'—';
+  const vizBig='<span style="color:var(--text)">'+vizStr(hd.swell,hd.wind)+'</span>';
+
   const card=
-    '<div style="margin-top:10px;padding:10px 12px;background:rgba(26,127,196,0.06);border-radius:6px;border:1px solid var(--border)">'+
-    '<div style="font-size:.57rem;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);opacity:.8;margin-bottom:8px">Sydney Offshore</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">'+
-        '<div style="white-space:nowrap"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Swell <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
-          '<span style="color:'+condColor(hd.swell,PREFS.maxSwell)+'">'+hd.swell.toFixed(2)+'m</span>'+(hd.swellDir!=null?' <span style="font-size:.6rem;color:var(--accent)">'+deg2cp(hd.swellDir)+'</span>':'')+(periodStr?' <span style="font-size:.6rem;opacity:.6">'+periodStr+'</span>':'')+
+    '<div style="margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden">'+
+      '<div style="background:#003087;color:#fff;padding:8px 14px;font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</div>'+
+      '<div style="padding:12px 14px">'+
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">'+
+          metricCard('Swell · 7–10am',swellBig,periodStr||'')+
+          metricCard('Wind · 7–10am',windBig,'')+
+          (hd.temp?metricCard('Water',waterBig,tempDiffStr+' · '+typTemp+'° typ'):'')+
+          metricCard('Viz (est)',vizBig,'')+
         '</div>'+
-        '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Wind <span style="color:rgba(0,255,200,0.45)">7–10am</span></div>'+
-          '<span style="color:'+condColor(hd.wind,PREFS.maxWind)+'">'+hd.wind.toFixed(0)+'kt '+(deg2cp(hd.windDir)||'')+'</span></div>'+
-        (hd.temp?'<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Water</div>'+
-          '<span style="color:'+(wetsuitRec(hd.temp)?.good?'var(--go)':'var(--muted)')+'">'+hd.temp.toFixed(1)+'°C</span> <span style="font-size:.6rem;color:var(--muted)">(typ.'+SYDNEY_TEMPS[new Date().getMonth()].toFixed(1)+'°C)</span></div>':'')+
-        '<div><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Viz (est)</div>'+
-          '<span>'+vizStr(hd.swell,hd.wind)+'</span></div>'+
-        '<div style="grid-column:1/-1"><div style="color:var(--muted);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Best window'+(tideNote?' (tide)':'')+'</div>'+
-          '<span style="color:var(--accent)">'+diveWindow+'</span>'+(tideNote?'<span style="font-size:.6rem;color:var(--muted);margin-left:8px">'+tideNote+'</span>':'')+
+        '<div style="background:var(--mid);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px">'+
+          '<div style="flex:1">'+
+            '<div style="font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Best window'+(tideNote?' · tide':'')+'</div>'+
+            '<div style="font-size:1.1rem;font-weight:700;color:var(--accent)">'+diveWindow+'</div>'+
+            (tideNote?'<div style="font-size:.6rem;color:var(--muted);margin-top:2px">'+tideNote+'</div>':'')+
+          '</div>'+
         '</div>'+
+        hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
       '</div>'+
-      hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
     '</div>';
 
   // Inject below the now-strip pill — wrap pill + card in a block
@@ -1693,13 +1946,11 @@ function rankSitesForDay(dateKey){
     .map(site=>{
       const dd=WX[site.region]?.days?.find(x=>x.date===dateKey);
       const r=assess(site,dd,PREFS);
-      const km=haversine(baseCoords.lat,baseCoords.lng,site.lat,site.lng);
-      return {site,r,dd,km};
+      return {site,r,dd};
     })
     .sort((a,b)=>{
       const ord={GO:0,MAYBE:1,NO:2,loading:3};
-      const d=(ord[a.r.verdict]??3)-(ord[b.r.verdict]??3);
-      return d!==0?d:a.km-b.km;
+      return (ord[a.r.verdict]??3)-(ord[b.r.verdict]??3);
     });
 }
 
@@ -1773,19 +2024,19 @@ function renderSites(){
     const entry=ranked.find(x=>x.site.id===id);
     if(entry) return entry;
     const site=SITES.find(s=>s.id===id);
-    return site?{site,r:{verdict:'NO',reason:'No data'},dd:null,km:haversine(baseCoords.lat,baseCoords.lng,site.lat,site.lng)}:null;
+    return site?{site,r:{verdict:'NO',reason:'No data'},dd:null}:null;
   }).filter(Boolean);
 
   const restRanked=ranked;
 
-  function compactRow({site,r,dd,km}){
+  function compactRow({site,r,dd}){
     const v=r.verdict;
     const dotCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'rgba(255,68,68,.7)';
     const textCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'var(--muted)';
     const curMonth=new Date().getMonth();
     const activeWildlife=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth));
-    const effSwellDir=dd?.swellDir!=null?' <span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(dd.swellDir)+'</span>':'';
-    const effWindDir=dd?.windDir!=null?' <span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)">'+deg2cp(dd.windDir)+'</span>':'';
+    const effSwellDir=dd?.swellDir!=null?' <span style="font-size:.58rem;color:var(--accent);opacity:0.7">'+deg2cp(dd.swellDir)+'</span>':'';
+    const effWindDir=dd?.windDir!=null?' <span style="font-size:.58rem;color:var(--accent);opacity:0.7">'+deg2cp(dd.windDir)+'</span>':'';
     const effStr=r.eff?.swell!=null
       ? '<span style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</span>'+effSwellDir
         +' <span style="color:var(--muted)">/</span>'
@@ -1801,8 +2052,8 @@ function renderSites(){
         surgeInfo(dd, site, true)+
         rainWarn(site)+vizTideNote(site,true)+
         (activeWildlife.length?'<br>'+activeWildlife.map(w=>w.icon+' '+w.label).join(' · '):'')+
-        '<br><span style="opacity:.55">'+site.region+' · '+km.toFixed(1)+'km · '+site.driveMin+'min drive</span>'+
-        hourlySparkline(dd, bestDiveWindow(dd?.date||'', stationFor(site), dd, site).window, {station:stationFor(site), dateKey:dd?.date||''})+
+        '<br><span style="opacity:.55">'+site.region+'</span>'+
+        siteScoreChart(site, dd, dd?.date||'', bestDiveWindow(dd?.date||'', stationFor(site), dd, site).window)+
       '</div>';
     return '<div class="feat-row" style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
       '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
@@ -1832,10 +2083,9 @@ function renderSites(){
   const ncsGrouped={NB:[],EB:[],SS:[],IL:[]};
   restRanked.forEach(e=>{const g=REGION_NCS[e.site.region]||'SS';ncsGrouped[g].push(e);});
 
-  function buildSiteCard({site,r,dd,km}){
+  function buildSiteCard({site,r,dd}){
     const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site), dd, site);
     const v=r.verdict.toLowerCase();
-    const km_str=km<2?(km*1000).toFixed(0)+'m':km.toFixed(1)+'km';
     const tags=[];
     if(site.entry==='boat')    tags.push('<span class="tag boat">BOAT</span>');
     if(site.buddyOnly)         tags.push('<span class="tag buddy">BUDDY</span>');
@@ -1845,8 +2095,8 @@ function renderSites(){
     const curMonth=new Date().getMonth();
     const activeWildlife=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth));
     let condLine='', condLine2='';
-    const swellDirStr=dd?.swellDir!=null?'<span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)"> '+deg2cp(dd.swellDir)+'</span>':'';
-    const windDirStr=dd?.windDir!=null?'<span style="font-size:.58rem;color:var(--accent);text-shadow:0 0 10px rgba(0,255,224,.7),0 0 28px rgba(0,255,224,.3)"> '+deg2cp(dd.windDir)+'</span>':'';
+    const swellDirStr=dd?.swellDir!=null?'<span style="font-size:.58rem;color:var(--accent);opacity:0.7"> '+deg2cp(dd.swellDir)+'</span>':'';
+    const windDirStr=dd?.windDir!=null?'<span style="font-size:.58rem;color:var(--accent);opacity:0.7"> '+deg2cp(dd.windDir)+'</span>':'';
     if(r.eff?.swell!=null){
       const sc=condColor(r.eff.swell,PREFS.maxSwell), wc=condColor(r.eff.wind,PREFS.maxWind);
       condLine='<span style="color:'+sc+'">'+r.eff.swell.toFixed(2)+'m</span>'+swellDirStr+' <span style="color:var(--muted)">/</span> <span style="color:'+wc+'">'+r.eff.wind.toFixed(1)+'kt</span>'+windDirStr;
@@ -1862,12 +2112,12 @@ function renderSites(){
         +' <span style="opacity:.45"> (Forecast Zone '+site.region+': '+dd.swell.toFixed(2)+'m'+(dd.swellDir!=null?' '+deg2cp(dd.swellDir):'')+( dd?.period!=null?' · '+dd.period.toFixed(0)+'s':'')+' · '+dd.wind.toFixed(1)+'kt'+(dd.windDir!=null?' '+deg2cp(dd.windDir):'')+') </span></div>'
       : '';
     return (
-      '<div class="site-card '+v+'" onclick="this.classList.toggle(\'open\')">'+
+      '<div class="site-card '+v+'" data-sid="'+site.id+'" onclick="toggleSiteCard(this)">'+
         '<div class="card-head">'+
           '<div class="dot"></div>'+
           '<div class="card-info">'+
             '<div class="card-name">'+site.name+'</div>'+
-            '<div class="card-meta">'+site.region+' · '+km_str+' · '+site.driveMin+'min drive · '+tags.join('')+'</div>'+
+            '<div class="card-meta">'+site.region+' · '+tags.join('')+'</div>'+
             (activeWildlife.length?'<div style="margin-top:3px">'+activeWildlife.map(w=>'<span class="wildlife-badge">'+w.icon+' '+w.label+'</span>').join('')+'</div>':'')+
           '</div>'+
           '<div class="card-cond">'+condLine+(condLine2?'<br>'+condLine2:'')+
@@ -1880,7 +2130,7 @@ function renderSites(){
           '<span style="opacity:.6">Depth: '+site.depthMin+'–'+site.depthMax+'m · Entry: '+site.entry+(site.buddyOnly?' · ⚠ BUDDY REQUIRED':'')+'</span>'+
           '<div style="margin-top:6px;font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
           (site.tideAdvice?'<div class="tide-advice">🌊 Tide: '+site.tideAdvice+'</div>':'')+
-          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+hourlySparkline(dd, diveWindow, {station:stationFor(site), dateKey:d})+
+          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+siteScoreChart(site, dd, d, diveWindow)+
         '</div>'+
       '</div>'
     );
@@ -1896,7 +2146,7 @@ function renderSites(){
     const sid='ncs-'+key;
     return '<div style="margin-top:14px">'+
       '<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--rim);cursor:pointer;user-select:none" data-sid="'+sid+'" onclick="toggleNCSSection(this.dataset.sid,this)">'+
-        '<span style="font-size:.65rem;font-weight:700;color:var(--accent);background:rgba(0,255,224,.1);border:1px solid rgba(0,255,224,.3);border-radius:3px;padding:1px 7px;flex-shrink:0">'+key+'</span>'+
+        '<span style="font-size:.65rem;font-weight:700;color:var(--accent);background:var(--mid);border:1px solid var(--rim);border-radius:3px;padding:1px 7px;flex-shrink:0">'+key+'</span>'+
         '<span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg);flex-shrink:0">'+meta.full+'</span>'+
         '<span style="font-size:.54rem;color:var(--muted)">'+meta.sub+'</span>'+
         '<span style="font-size:.58rem;color:var(--muted);margin-left:auto;flex-shrink:0">'+entries.length+' sites</span>'+
@@ -1912,6 +2162,7 @@ function renderSites(){
       '<div class="section-title" style="margin-top:0;margin-bottom:0">ALL SITES — '+fmtDate(d)+'</div>'+
     '</div>'+
     buildNCSSection('NB')+buildNCSSection('EB')+buildNCSSection('SS')+buildNCSSection('IL');
+  reapplyOpenSites();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1925,6 +2176,8 @@ function toggleNCSSection(id,header){
   const hidden=el.style.display==='none';
   el.style.display=hidden?'':'none';
   if(chev) chev.style.transform=hidden?'':'rotate(-90deg)';
+  if(hidden) openNcsSections.add(key);
+  else openNcsSections.delete(key);
 }
 
 function toggleAll(containerId){
@@ -1943,11 +2196,6 @@ function navigate(dir){
   winOffset=n; render();
 }
 
-let pcTimer;
-document.getElementById('postcode').addEventListener('input',function(){
-  clearTimeout(pcTimer);
-  if(this.value.length===4) pcTimer=setTimeout(()=>geocodePostcode(this.value),700);
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BOOT
