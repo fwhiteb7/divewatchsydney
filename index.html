@@ -1473,7 +1473,7 @@ function hourlySparkline(dd, diveWindow, tideInfo){
   const goSwell=PREFS.maxSwell;
 
   // Colour helper
-  const sc=s=>s>goSwell?'#d93535':s>goSwell*0.7?'#c88010':'#1a7fc4';
+  const sc=s=>s>goSwell?'#ff1744':s>goSwell*0.7?'#ffab00':'#00c853';
 
   // x centre for slot i
   const cx=i=>PAD_L+i*slotW+slotW/2;
@@ -1508,14 +1508,13 @@ function hourlySparkline(dd, diveWindow, tideInfo){
     const wx1=PAD_L+(diveEndIdxFwd+1)*slotW;
     const winW=wx1-wx0;
     svg+=`<rect x="${wx0}" y="0" width="${winW}" height="${SWELL_H}" rx="2" fill="rgba(26,127,196,0.09)" stroke="rgba(26,127,196,0.45)" stroke-width="0.6"/>`;
-    svg+=`<text x="${wx0+winW/2}" y="${-3}" text-anchor="middle" font-size="6.5" fill="#1a7fc4" font-weight="600">${diveWindow||'best window'}</text>`;
   }
 
   // ── Swell bars ──
   hrs.forEach((h,i)=>{
     const x=cx(i);
     const sh=SWELL_H-sy(h.swell);
-    svg+=`<rect x="${(x-barW/2).toFixed(1)}" y="${sy(h.swell).toFixed(1)}" width="${barW.toFixed(1)}" height="${sh.toFixed(1)}" rx="1" fill="${sc(h.swell)}" opacity="0.72"/>`;
+    svg+=`<rect x="${(x-barW/2).toFixed(1)}" y="${sy(h.swell).toFixed(1)}" width="${barW.toFixed(1)}" height="${sh.toFixed(1)}" rx="1" fill="${sc(h.swell)}"/>`;
     if(PRINT_HOURS.includes(h.hour)){
       svg+=`<text x="${x.toFixed(1)}" y="${(sy(h.swell)-3).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${sc(h.swell)}" font-weight="600">${h.swell.toFixed(1)}</text>`;
     }
@@ -1564,9 +1563,7 @@ function hourlySparkline(dd, diveWindow, tideInfo){
         const tickColor=isLocalHigh?'rgba(100,180,220,0.55)':'rgba(100,180,220,0.30)';
         svg+=`<line x1="${xi.toFixed(1)}" y1="0" x2="${xi.toFixed(1)}" y2="${SWELL_H}" stroke="${tickColor}" stroke-width="1" stroke-dasharray="2,2"/>`;
         const arrow=isLocalHigh?'↑':'↓';
-        // Stagger labels vertically so adjacent tides don't collide (odd index = slightly lower)
-        const labelY = pi%2===0 ? 9 : 17;
-        svg+=`<text x="${xi.toFixed(1)}" y="${labelY}" text-anchor="middle" font-size="6.5" fill="rgba(80,160,210,0.85)" font-weight="500">${arrow}${p.ht.toFixed(1)}m</text>`;
+        svg+=`<text x="${xi.toFixed(1)}" y="${TOTAL_H+9}" text-anchor="middle" font-size="6.5" fill="rgba(80,160,210,0.85)" font-weight="500">${arrow}${p.ht.toFixed(1)}m</text>`;
       });
     }
   }
@@ -1628,39 +1625,57 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
 
   let svg='';
 
-  // ── Tide background polygon ──
+  // ── Layer 1: Tide polygon (furthest back) ──
   const station=stationFor(site);
   const exs=TIDES[station]?.[dateKey];
+  let tideLabels=''; // collected separately, drawn last so they're always on top
   if(exs?.length>=2){
     const sydHour=dt=>{const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});const[h,m]=s.split(':').map(Number);return h+m/60;};
-    const pts=exs.map(e=>({h:sydHour(e.dt),ht:e.height})).sort((a,b)=>a.h-b.h);
-    const tideCap=Math.max(2,...pts.map(p=>p.ht));
+    const tidePts=exs.map(e=>({h:sydHour(e.dt),ht:e.height})).sort((a,b)=>a.h-b.h);
+    const tideCap=Math.max(2,...tidePts.map(p=>p.ht));
     const tideAtHour=hr=>{
-      for(let i=0;i<pts.length-1;i++){
-        if(hr>=pts[i].h&&hr<=pts[i+1].h){
-          const t=(hr-pts[i].h)/(pts[i+1].h-pts[i].h);
-          return (pts[i].ht+pts[i+1].ht)/2-(pts[i+1].ht-pts[i].ht)/2*Math.cos(Math.PI*t);
+      for(let i=0;i<tidePts.length-1;i++){
+        if(hr>=tidePts[i].h&&hr<=tidePts[i+1].h){
+          const t=(hr-tidePts[i].h)/(tidePts[i+1].h-tidePts[i].h);
+          return (tidePts[i].ht+tidePts[i+1].ht)/2-(tidePts[i+1].ht-tidePts[i].ht)/2*Math.cos(Math.PI*t);
         }
       }
-      return hr<pts[0].h?pts[0].ht:pts[pts.length-1].ht;
+      return hr<tidePts[0].h?tidePts[0].ht:tidePts[tidePts.length-1].ht;
     };
-    const shadePts=hrs.map((h,i)=>{
-      const ht=tideAtHour(h.hour);
-      const ty=H-Math.round((ht/tideCap)*H);
-      return `${cx(i).toFixed(1)},${ty}`;
-    });
-    const firstX=cx(0), lastX=cx(n-1);
-    svg+=`<polygon points="${firstX},${H} ${shadePts.join(' ')} ${lastX},${H}" fill="rgba(100,180,220,0.10)" stroke="none"/>`;
-    // Tide tick marks
-    pts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach((p,pi)=>{
+    const shadePts=hrs.map((h,i)=>`${cx(i).toFixed(1)},${(H-Math.round((tideAtHour(h.hour)/tideCap)*H)).toFixed(0)}`);
+    svg+=`<polygon points="${cx(0)},${H} ${shadePts.join(' ')} ${cx(n-1)},${H}" fill="rgba(100,180,220,0.10)" stroke="none"/>`;
+    // Dashed vertical lines + labels collected for top-layer render
+    tidePts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach((p,pi)=>{
       const xi=PAD_L+(p.h-SHOW_FROM)/(SHOW_TO-SHOW_FROM)*chartW;
-      const idx=pts.indexOf(p);
-      const prevHt=idx>0?pts[idx-1].ht:p.ht;
-      const nextHt=idx<pts.length-1?pts[idx+1].ht:p.ht;
-      const isHigh=p.ht>prevHt&&p.ht>nextHt||pts.length===1;
-      svg+=`<line x1="${xi.toFixed(1)}" y1="0" x2="${xi.toFixed(1)}" y2="${H}" stroke="${isHigh?'rgba(100,180,220,0.45)':'rgba(100,180,220,0.22)'}" stroke-width="1" stroke-dasharray="2,2"/>`;
-      const labelY=pi%2===0?9:17;
-      svg+=`<text x="${xi.toFixed(1)}" y="${labelY}" text-anchor="middle" font-size="6.5" fill="rgba(80,160,210,0.75)" font-weight="500">${isHigh?'↑':'↓'}${p.ht.toFixed(1)}m</text>`;
+      const idx=tidePts.indexOf(p);
+      const prevHt=idx>0?tidePts[idx-1].ht:p.ht;
+      const nextHt=idx<tidePts.length-1?tidePts[idx+1].ht:p.ht;
+      const isHigh=p.ht>prevHt&&p.ht>nextHt||tidePts.length===1;
+      svg+=`<line x1="${xi.toFixed(1)}" y1="0" x2="${xi.toFixed(1)}" y2="${H}" stroke="rgba(100,180,220,0.25)" stroke-width="0.8" stroke-dasharray="2,3"/>`;
+      tideLabels+=`<text x="${xi.toFixed(1)}" y="${TOTAL_H+9}" text-anchor="middle" font-size="6.5" fill="rgba(70,140,200,0.9)" font-weight="500">${isHigh?'↑':'↓'}${p.ht.toFixed(1)}m</text>`;
+    });
+  }
+
+  // ── Layer 2: Swell bars (bottom 25%, vivid, behind quality curve) ──
+  {
+    const SWELL_ZONE=H*0.25;
+    const swellMax=Math.max(2.5,...hrs.map(h=>h.swell||0));
+    const barW=Math.max(2,slotW*0.6);
+    const swellC=s=>s<=PREFS.maxSwell?'#00c853':s<2.5?'#ffab00':'#ff1744';
+    hrs.forEach((h,i)=>{
+      if(h.swell==null) return;
+      const bh=Math.round((h.swell/swellMax)*SWELL_ZONE);
+      const by=H-bh;
+      svg+=`<rect x="${(cx(i)-barW/2).toFixed(1)}" y="${by}" width="${barW.toFixed(1)}" height="${bh}" rx="1" fill="${swellC(h.swell)}"/>`;
+    });
+    // Swell height labels at selected hours, just above their bar
+    [6,9,12,15,18].forEach(hr=>{
+      const h=hrs.find(x=>x.hour===hr);
+      if(!h||h.swell==null) return;
+      const bh=Math.round((h.swell/swellMax)*SWELL_ZONE);
+      const by=H-bh;
+      const i=hrs.indexOf(h);
+      svg+=`<text x="${cx(i).toFixed(1)}" y="${(by-2).toFixed(1)}" text-anchor="middle" font-size="5.5" font-weight="700" fill="${swellC(h.swell)}">${h.swell.toFixed(1)}</text>`;
     });
   }
 
@@ -1685,7 +1700,6 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
     const wx0=PAD_L+diveStartIdx*slotW;
     const wx1=PAD_L+(diveEndIdxFwd+1)*slotW;
     svg+=`<rect x="${wx0}" y="0" width="${wx1-wx0}" height="${H}" rx="2" fill="rgba(26,127,196,0.06)" stroke="rgba(26,127,196,0.35)" stroke-width="0.6"/>`;
-    svg+=`<text x="${wx0+(wx1-wx0)/2}" y="-3" text-anchor="middle" font-size="6.5" fill="#1a7fc4" font-weight="600">${diveWindow||'best window'}</text>`;
   }
 
   // ── Smooth coloured curve (Catmull-Rom → cubic bezier) ──
@@ -1698,7 +1712,7 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
     const cp1x=p1.x+(p2.x-p0.x)/6, cp1y=p1.y+(p2.y-p0.y)/6;
     const cp2x=p2.x-(p3.x-p1.x)/6, cp2y=p2.y-(p3.y-p1.y)/6;
     const segColor=qc((p1.q+p2.q)/2);
-    svg+=`<path d="M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}" fill="none" stroke="${segColor}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>`;
+    svg+=`<path d="M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}" fill="none" stroke="${segColor}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`;
   }
   // Hour labels on x axis only
   scores.forEach((s,i)=>{
@@ -1718,7 +1732,7 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
   return `<div style="grid-column:1/-1;margin-top:6px">`+
     `<div style="color:var(--muted);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Hourly forecast</div>`+
     `<svg viewBox="0 0 ${W} ${TOTAL_H+4}" width="100%" style="display:block;overflow:visible">`+
-      svg+
+      svg+tideLabels+
     `</svg>`+
     buildNote+
   `</div>`;
@@ -1916,23 +1930,27 @@ function renderOffshoreCard(){
   const waterBig=hd.temp?'<span style="color:'+tempCol+'">'+hd.temp.toFixed(1)+'°C</span>':'—';
   const vizBig='<span style="color:var(--text)">'+vizStr(hd.swell,hd.wind)+'</span>';
 
+  const inlineMetric=(lbl,big,sub,last)=>
+    '<div style="padding:10px 12px;'+(last?'':'border-right:1px solid var(--border);')+';min-width:0">'+
+      '<div style="font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:3px">'+lbl+'</div>'+
+      '<div style="font-size:1.05rem;font-weight:700;line-height:1.1;color:var(--text)">'+big+'</div>'+
+      (sub?'<div style="font-size:.55rem;color:var(--muted);margin-top:2px">'+sub+'</div>':'')+
+    '</div>';
+
   const card=
     '<div style="margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden">'+
-      '<div style="background:#003087;color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</span><span style="font-size:.55rem;opacity:.7;letter-spacing:.06em">7–10am window</span></div>'+
-      '<div style="padding:12px 14px">'+
-        '<div class="offshore-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">'+
-          metricCard('Swell',swellBig,periodStr||'')+
-          metricCard('Wind',windBig,'')+
-          (hd.temp?metricCard('Water',waterBig,tempDiffStr+' · '+typTemp+'° typ'):'')+
-          metricCard('Viz (est)',vizBig,'')+
-        '</div>'+
-        '<div class="offshore-bw" style="background:var(--mid);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px">'+
-          '<div style="flex:1">'+
-            '<div style="font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Best window'+(tideNote?' · tide':'')+'</div>'+
-            '<div style="font-size:1.1rem;font-weight:700;color:var(--accent)">'+diveWindow+'</div>'+
-            (tideNote?'<div style="font-size:.6rem;color:var(--muted);margin-top:2px">'+tideNote+'</div>':'')+
-          '</div>'+
-        '</div>'+
+      '<div style="background:#003087;color:#fff;padding:7px 14px;display:flex;align-items:center;justify-content:space-between">'+
+        '<span style="font-size:.57rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</span>'+
+        '<span style="font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
+      '</div>'+
+      '<div class="offshore-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border)">'+
+        inlineMetric('Swell',swellBig,periodStr||'',false)+
+        inlineMetric('Wind',windBig,'',false)+
+        (hd.temp?inlineMetric('Water',waterBig,tempDiffStr,false):'')+
+        inlineMetric('Viz',vizBig,'',true)+
+      '</div>'+
+      (tideNote?'<div style="padding:5px 14px;font-size:.58rem;color:var(--muted);border-bottom:1px solid var(--border);text-align:center">'+tideNote+'</div>':'')+
+      '<div style="padding:10px 14px 4px">'+
         hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
       '</div>'+
     '</div>';
@@ -2171,7 +2189,10 @@ function renderSites(){
 
   document.getElementById('site-rest-area').innerHTML=
     '<div style="display:flex;align-items:center;margin-top:18px;margin-bottom:2px">'+
+      '<div style="display:flex;align-items:baseline;gap:10px">'+
       '<div class="section-title" style="margin-top:0;margin-bottom:0">ALL SITES — '+fmtDate(d)+'</div>'+
+      '<span style="font-size:.55rem;color:var(--muted);letter-spacing:.06em">tap a region to expand</span>'+
+    '</div>'+
     '</div>'+
     buildNCSSection('NB')+buildNCSSection('EB')+buildNCSSection('SS')+buildNCSSection('IL');
   reapplyOpenSites();
