@@ -27,6 +27,34 @@
   --border:     #b8ccde;
 }
 
+/* ── Dark theme — Netlify-style charcoal ── */
+[data-theme="dark"] {
+  --ink:        #000000;
+  --deep:       #000000;
+  --mid:        #111111;
+  --surface:    #1a1a1a;
+  --rim:        rgba(255,255,255,.06);
+  --text:       #ffffff;
+  --muted:      rgba(255,255,255,.50);
+  --accent:     #111111;
+  --go:         #22c55e;
+  --maybe:      #f59e0b;
+  --no:         #ef4444;
+  --go-bg:      rgba(34,197,94,.10);
+  --maybe-bg:   rgba(245,158,11,.10);
+  --no-bg:      rgba(239,68,68,.10);
+  --card:       #111111;
+  --border:     rgba(255,255,255,.08);
+}
+[data-theme="dark"] body::before {
+  background: none;
+}
+[data-theme="dark"] .verdict-band.go    { border-color: rgba(34,197,94,.35);  background: rgba(34,197,94,.08); }
+[data-theme="dark"] .verdict-band.maybe { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
+[data-theme="dark"] .verdict-band.no    { border-color: rgba(239,68,68,.35);  background: rgba(239,68,68,.08); }
+[data-theme="dark"] .viz-btn   { color: rgba(255,255,255,.60); border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.04); }
+[data-theme="dark"] .abyss-btn { color: rgba(255,255,255,.60); border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.04); }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
@@ -93,6 +121,13 @@ body::before {
   padding: 5px 10px; border-radius: 4px; cursor: pointer; transition: all .15s;
 }
 .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.theme-toggle {
+  background: none; border: 1px solid var(--rim); color: var(--muted);
+  font-size: .8rem; padding: 4px 9px; border-radius: 4px; cursor: pointer;
+  transition: all .15s; line-height: 1; user-select: none;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ── External link buttons (VIZ / Abyss) ── */
 .ext-link-btn {
@@ -485,6 +520,7 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
     <div class="issued-line"><span id="issued-date"></span></div>
   </div>
   <div class="header-right">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">☀</button>
     <button class="refresh-btn" onclick="refreshAll()">&#8635; REFRESH</button>
   </div>
 </div>
@@ -1771,6 +1807,28 @@ async function fetchAll(){
 
 function refreshAll(){ fetchAll(); }
 
+function toggleTheme(){
+  const isDark=document.documentElement.dataset.theme==='dark';
+  const next=isDark?'light':'dark';
+  document.documentElement.dataset.theme=next;
+  document.getElementById('theme-toggle').textContent=isDark?'☀':'☾';
+  try{ localStorage.setItem('dws-theme',next); }catch(e){}
+}
+
+/* Apply saved theme on load */
+(function(){
+  try{
+    const saved=localStorage.getItem('dws-theme');
+    if(saved==='dark'){
+      document.documentElement.dataset.theme='dark';
+      document.addEventListener('DOMContentLoaded',()=>{
+        const btn=document.getElementById('theme-toggle');
+        if(btn) btn.textContent='☾';
+      });
+    }
+  }catch(e){}
+})();
+
 function checkZoneFailures(){
   const failed = Object.entries(WX).filter(([z,d])=>d.failed).map(([z])=>z);
   if(failed.length){
@@ -1938,8 +1996,8 @@ function renderOffshoreCard(){
     '</div>';
 
   const card=
-    '<div style="margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden">'+
-      '<div style="background:#003087;color:#fff;padding:7px 14px;display:flex;align-items:center;justify-content:space-between">'+
+    '<div style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden">'+
+      '<div style="background:var(--accent);color:#fff;padding:7px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">'+
         '<span style="font-size:.57rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</span>'+
         '<span style="font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
       '</div>'+
