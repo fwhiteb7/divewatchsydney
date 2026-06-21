@@ -36,7 +36,7 @@
   --rim:        rgba(255,255,255,.06);
   --text:       #ffffff;
   --muted:      rgba(255,255,255,.50);
-  --accent:     #111111;
+  --accent:     rgba(255,255,255,.78);
   --go:         #22c55e;
   --maybe:      #f59e0b;
   --no:         #ef4444;
@@ -49,6 +49,9 @@
 [data-theme="dark"] body::before {
   background: none;
 }
+[data-theme="dark"] .logo        { color: rgba(255,255,255,.90); }
+[data-theme="dark"] .logo em     { opacity: .30; }
+[data-theme="dark"] .offshore-hdr { background: #1a1a1a !important; color: rgba(255,255,255,.80); }
 [data-theme="dark"] .verdict-band.go    { border-color: rgba(34,197,94,.35);  background: rgba(34,197,94,.08); }
 [data-theme="dark"] .verdict-band.maybe { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
 [data-theme="dark"] .verdict-band.no    { border-color: rgba(239,68,68,.35);  background: rgba(239,68,68,.08); }
@@ -1997,7 +2000,7 @@ function renderOffshoreCard(){
 
   const card=
     '<div style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden">'+
-      '<div style="background:var(--accent);color:#fff;padding:7px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">'+
+      '<div class="offshore-hdr" style="background:var(--accent);color:#fff;padding:7px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">'+
         '<span style="font-size:.57rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</span>'+
         '<span style="font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
       '</div>'+
