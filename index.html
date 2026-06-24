@@ -2268,6 +2268,19 @@ function toggleNCSSection(id,header){
   const key=id.replace('ncs-','');
   const chev=header.querySelector('.ncs-chev-'+key);
   const hidden=el.style.display==='none';
+  // Accordion: close all other regions when opening one
+  if(hidden){
+    ['NB','EB','SS','IL'].forEach(k=>{
+      if(k===key) return;
+      const other=document.getElementById('ncs-'+k);
+      if(other && other.style.display!=='none'){
+        other.style.display='none';
+        const otherChev=other.previousElementSibling&&other.previousElementSibling.querySelector('.ncs-chev-'+k);
+        if(otherChev) otherChev.style.transform='rotate(-90deg)';
+        openNcsSections.delete(k);
+      }
+    });
+  }
   el.style.display=hidden?'':'none';
   if(chev) chev.style.transform=hidden?'':'rotate(-90deg)';
   if(hidden) openNcsSections.add(key);
