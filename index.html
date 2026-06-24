@@ -2248,7 +2248,7 @@ function renderSites(){
         '<div class="card-head">'+
           '<div class="dot"></div>'+
           '<div class="card-info">'+
-            '<div class="card-name">'+site.name+' <a href="https://www.google.com/maps?q='+site.lat+','+site.lng+'" target="_blank" onclick="event.stopPropagation()" style="font-size:inherit;color:var(--muted);text-decoration:none;font-weight:400">📍 '+site.lat.toFixed(4)+', '+site.lng.toFixed(4)+'</a></div>'+
+            '<div class="card-name">'+site.name+' <a href="https://www.google.com/maps?q='+site.lat+','+site.lng+'" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;font-size:.56rem;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:10px;background:rgba(90,122,154,.12);border:1px solid rgba(90,122,154,.30);color:var(--muted);text-decoration:none;vertical-align:middle;margin-left:3px" title="'+site.lat.toFixed(4)+', '+site.lng.toFixed(4)+'">📍 map</a></div>'+
             '<div class="card-meta">'+site.region+' · '+tags.join('')+'</div>'+
             (activeWildlife.length?'<div style="margin-top:3px">'+activeWildlife.map(w=>'<span class="wildlife-badge">'+w.icon+' '+w.label+'</span>').join('')+'</div>':'')+
           '</div>'+
@@ -2270,10 +2270,15 @@ function renderSites(){
               (exposed?'Exposed: <span style="color:var(--text);opacity:.7">'+exposed+'</span>':'')+
             '</div>';
           })()+
-          '<div style="margin-top:6px;font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
+          '<div style="border-top:1px solid var(--border);margin:10px 0 8px">'+
+          '<div style="font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
           (site.tideAdvice?'<div class="tide-advice">🌊 Tide: '+site.tideAdvice+'</div>':'')+
+          '</div>'+
+          '<div style="border-top:1px solid var(--border);padding-top:8px">'+
           vizSeasonStrip(site)+
-          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+siteScoreChart(site, dd, d, diveWindow)+
+          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+
+          '</div>'+
+          siteScoreChart(site, dd, d, diveWindow)+
         '</div>'+
       '</div>'
     );
