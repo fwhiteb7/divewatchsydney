@@ -605,7 +605,8 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
         <div style="font-weight:600;margin-bottom:.25rem;color:var(--muted);">GO bar (Fred's thresholds)</div>
         <div style="margin-bottom:.6rem;padding:.5rem .7rem;background:rgba(26,127,196,0.06);border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:.7rem;">
           Wind &lt; 10 kt &nbsp;·&nbsp; Swell &lt; 1.0 m &nbsp;·&nbsp; Viz ≥ 5 m &nbsp;·&nbsp; Temp: no floor<br>
-          Hard ceiling → wind ≥ 28 kt OR swell ≥ 2.5 m = <strong>NO, no exceptions</strong>
+          Hard ceiling → wind ≥ 28 kt OR swell ≥ 2.5 m = <strong>NO, no exceptions</strong><br>
+          <span style="opacity:.75">Exception: fully enclosed harbour sites are exempt from the <em>swell</em> ceiling only (ocean swell can't reach them) — the wind ceiling always applies.</span>
         </div>
 
         <div style="font-weight:600;margin-bottom:.25rem;color:var(--muted);">McFadyen thresholds (30 years of Sydney field notes)</div>
@@ -828,7 +829,6 @@ const ZONES = {
 
 let WX = {};          // { regionName: { days: [...] } }
 let TIDES = {};       // { 'YYYY-MM-DD': [{type:'High'|'Low', height, timeStr, dt}] }
-let baseCoords = { lat:-33.8688, lng:151.2093 };  // Sydney CBD default
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITIES
@@ -855,12 +855,6 @@ const CPS=['N','NE','E','SE','S','SW','W','NW'];
 function deg2cp(deg){
   if(deg==null)return null;
   return CPS[Math.round(((deg%360)+360)%360/45)%8];
-}
-
-function haversine(lat1,lng1,lat2,lng2){
-  const R=6371, dl=(lat2-lat1)*Math.PI/180, dg=(lng2-lng1)*Math.PI/180;
-  const a=Math.sin(dl/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dg/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -902,10 +896,13 @@ function shield(site, rawSwell, rawWind, windDeg, swellDeg, period){
 function assess(site, dayData, prefs){
   if(!dayData) return { verdict:'loading', eff:{} };
 
-  if(dayData.swell>=CEIL.swell || dayData.wind>=CEIL.wind)
+  // Fully enclosed harbour sites: ocean swell can't reach them (McFadyen: "any wind OK" at Clifton) —
+  // swell ceiling waived; wind ceiling always applies (surface chop, safety)
+  const enclosed = site.shelterDir==='harbour';
+  if((!enclosed && dayData.swell>=CEIL.swell) || dayData.wind>=CEIL.wind)
     return { verdict:'NO', reason:'&#9940; Hard ceiling — raw swell '+dayData.swell.toFixed(1)+'m / wind '+dayData.wind.toFixed(0)+'kt', eff:{} };
   // Compound ceiling: severe swell + severe wind together even if individually under hard ceiling
-  if(dayData.swell>=2.0 && dayData.wind>=20)
+  if(!enclosed && dayData.swell>=2.0 && dayData.wind>=20)
     return { verdict:'NO', reason:'&#9940; Compound ceiling — swell '+dayData.swell.toFixed(1)+'m + wind '+dayData.wind.toFixed(0)+'kt (dangerous combination)', eff:{} };
 
   if(CAL[dayData.date]?.blocked)
@@ -966,6 +963,11 @@ function assess(site, dayData, prefs){
     }
   }
 
+  // Gusty note: strong gust factor makes entries/exits and boat work harder than mean wind suggests
+  if(dayData.gust!=null && dayData.gust>=15 && dayData.gust>=dayData.wind*1.6){
+    surgeNote+=' · ⚠ gusty ('+dayData.gust.toFixed(0)+'kt gusts over '+dayData.wind.toFixed(0)+'kt mean)';
+  }
+
   // Harbour wind chop note (12–18kt) — appended here after surgeNote is declared
   if(site.harbourChop && dayData.wind>12){
     surgeNote+=' · ⚠ wind chop building in harbour ('+dayData.wind.toFixed(0)+'kt)';
@@ -976,8 +978,11 @@ function assess(site, dayData, prefs){
     const exs=TIDES[REGION_STATION[site.region]||'fort-denison']?.[dayData.date];
     if(exs?.length){
       const sydHr=dt=>{const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false});const[h,m]=s.split(':').map(Number);return h+m/60;};
-      const nowH=new Date().getHours()+new Date().getMinutes()/60;
-      const nearest=exs.reduce((a,b)=>Math.abs(sydHr(b.dt)-nowH)<Math.abs(sydHr(a.dt)-nowH)?b:a);
+      // Reference hour: current Sydney time if viewing today, else 9am (typical dive time) — don't judge Thursday's tide by right now
+      const isToday=dayData.date===iso(0);
+      const sydNow=new Date().toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false}).split(':').map(Number);
+      const refH=isToday?sydNow[0]+sydNow[1]/60:9;
+      const nearest=exs.reduce((a,b)=>Math.abs(sydHr(b.dt)-refH)<Math.abs(sydHr(a.dt)-refH)?b:a);
       if(nearest.type==='High'&&nearest.height>1.0){
         surgeNote+=' · ⚠ high tide ('+nearest.height.toFixed(1)+'m) — entry conditions worse at this site';
       }
@@ -996,103 +1001,17 @@ function assess(site, dayData, prefs){
   return { verdict:'GO', reason:'Within GO bar'+wsNote+surgeNote+harbourRawNote, eff:{swell:es,wind:ew} };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WHY STRING — natural-language reason for GO/MAYBE verdict
-// ─────────────────────────────────────────────────────────────────────────────
-function whyString(site, dayData, result){
-  const parts = [];
-  const eff = result.eff || {};
-  const es = eff.swell ?? dayData?.swell;
-  const ew = eff.wind  ?? dayData?.wind;
-  if(!dayData) return '';
-
-  // Shelter character
-  if(site.shelterDir === 'harbour'){
-    parts.push('harbour sheltered');
-  } else if(Array.isArray(site.shelterDir) && site.shelterDir.length){
-    const swcp = dayData.swellDir != null ? deg2cp(dayData.swellDir) : null;
-    const sheltered = swcp && site.shelterDir.some(d => d === swcp || Math.abs(['N','NE','E','SE','S','SW','W','NW'].indexOf(d) - ['N','NE','E','SE','S','SW','W','NW'].indexOf(swcp)) <= 1);
-    if(sheltered) parts.push(deg2cp(dayData.swellDir)+' swell sheltered');
-    else if(es != null && es < dayData.swell * 0.5) parts.push('partially sheltered');
-  }
-
-  // Wind character
-  if(dayData.wind != null && dayData.windDir != null){
-    const wcp = deg2cp(dayData.windDir);
-    const isOffshore = Array.isArray(site.shelterDir) && site.shelterDir.some(d => d === wcp);
-    const isHarbour  = site.shelterDir === 'harbour';
-    if(dayData.wind <= 5)        parts.push('wind calm');
-    else if(isOffshore)          parts.push('wind '+wcp+' '+dayData.wind.toFixed(0)+'kt offshore');
-    else if(isHarbour && dayData.wind <= 12) parts.push('wind light in harbour');
-    else                         parts.push('wind '+wcp+' '+dayData.wind.toFixed(0)+'kt');
-  }
-
-  // Swell character
-  if(es != null){
-    if(es < 0.1)       parts.push('swell negligible');
-    else if(es < 0.3)  parts.push('swell flat '+es.toFixed(2)+'m');
-    else if(es < 0.6)  parts.push('swell easy '+es.toFixed(2)+'m');
-    else               parts.push('swell '+es.toFixed(2)+'m');
-  }
-
-  // Period flag
-  if(dayData.period != null){
-    if(dayData.period >= 14) parts.push('⚠ long period '+dayData.period.toFixed(0)+'s');
-  }
-
-  // Tide character
-  const station = REGION_STATION[site.region] || 'fort-denison';
-  const exs = TIDES[station]?.[dayData.date];
-  if(exs?.length){
-    const sydHr = dt => { const s=dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false}); const[h,m]=s.split(':').map(Number); return h+m/60; };
-    const daytimeHighs = exs.filter(p => p.type==='High' && sydHr(p.dt)>=6 && sydHr(p.dt)<=14);
-    const daytimeLows  = exs.filter(p => p.type==='Low'  && sydHr(p.dt)>=6 && sydHr(p.dt)<=14);
-    const te = site.tideEffect || 'prefer_high';
-    if(te==='prefer_high' && daytimeHighs.length){
-      const h=daytimeHighs[0]; const hr=sydHr(h.dt);
-      const label = hr<=10 ? 'incoming high' : hr<=14 ? 'high tide at '+Math.round(hr)+'am' : 'high tide later';
-      parts.push(label+' ('+h.height.toFixed(1)+'m)');
-    } else if(te==='avoid_high' && daytimeLows.length){
-      const l=daytimeLows[0];
-      parts.push('low tide '+Math.round(sydHr(l.dt))+'am — good entry');
-    } else if(te==='avoid_low' && daytimeHighs.length){
-      const h=daytimeHighs[0];
-      parts.push('mid-tide rising — access clear');
-    }
-  }
-
-  // Viz hint
-  if(es != null && ew != null){
-    const v = vizStr(es, ew);
-    if(v) parts.push('viz '+v);
-  }
-
-  return parts.join(' · ');
-}
-
-function surgeDepthCallout(dayData, site){
-  if(!dayData?.period || !site?.depthMax) return '';
-  const surgeD = Math.round((dayData.period * dayData.period) / 4);
-  const maxD = site.depthMax;
-  const color = surgeD >= maxD ? 'var(--maybe)' : 'var(--go)';
-  const label = surgeD >= maxD
-    ? '⚠ surge throughout (to '+surgeD+'m)'
-    : surgeD > (site.depthMin||0)
-      ? 'surge-free below '+surgeD+'m'
-      : 'surge-free to max depth';
-  return '<span style="font-size:.6rem;color:'+color+';white-space:nowrap">'+label+' · '+dayData.period.toFixed(0)+'s</span>';
-}
-
 function dayBestVerdict(dateKey){
-  let best='NO';
+  let best='NO', anyData=false;
   for(const site of SITES){
     const dd=WX[site.region]?.days?.find(d=>d.date===dateKey);
-    if(!dd) return 'loading';
+    if(!dd) continue;  // skip sites in failed/pending zones — don't freeze the whole day on 'loading'
+    anyData=true;
     const r=assess(site,dd,PREFS);
     if(r.verdict==='GO') return 'GO';
     if(r.verdict==='MAYBE') best='MAYBE';
   }
-  return best;
+  return anyData ? best : 'loading';
 }
 
 // ─── SYDNEY SEASONAL DATA  (McFadyen, page_id=744, 2200+ dives) ────────────
@@ -1231,7 +1150,7 @@ function vizStr(swell,wind){
 async function fetchZone(zone, coords, onDone){
   const start=iso(-1), end=iso(DAYS-1);
   const {lat,lng}=coords;
-  const cacheKey='dws_h3_'+zone+'_'+start; // h3 = hourly v3
+  const cacheKey='dws_h4_'+zone+'_'+start; // h4 = hourly v4 (adds wind gusts)
   try{
     const cached=sessionStorage.getItem(cacheKey);
     if(cached){
@@ -1243,7 +1162,7 @@ async function fetchZone(zone, coords, onDone){
         '&hourly=swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature'+
         '&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end),
       fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+
-        '&hourly=wind_speed_10m,wind_direction_10m'+
+        '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m'+
         '&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end+
         '&wind_speed_unit=kn')
     ]);
@@ -1265,6 +1184,7 @@ async function fetchZone(zone, coords, onDone){
         period:  m.hourly.swell_wave_period?.[i]    ?? null,
         wind:    w.hourly.wind_speed_10m?.[i]        ?? 0,
         windDir: w.hourly.wind_direction_10m?.[i]    ?? null,
+        gust:    w.hourly.wind_gusts_10m?.[i]        ?? null,
         temp:    m.hourly.sea_surface_temperature?.[i]??null,
       });
     }
@@ -1284,7 +1204,7 @@ async function fetchZone(zone, coords, onDone){
         date,
         // Morning window summary — used by assess(), condGrid, verdict
         swell:win.swell, swellDir:win.swellDir, period:win.period,
-        wind:win.wind, windDir:win.windDir, temp,
+        wind:win.wind, windDir:win.windDir, gust:win.gust??null, temp,
         // Full-day context
         swellMax, windMax,
         // All hours for sparkline
@@ -1530,7 +1450,7 @@ function hourlySparkline(dd, diveWindow, tideInfo){
   svg+=`<text x="2" y="${SWELL_H/2+4}" text-anchor="start" font-size="6" fill="#6a8aaa" transform="rotate(-90,8,${SWELL_H/2})">swell m</text>`;
 
   // ── Baseline ──
-  svg+=`<line x1="${PAD_L}" y1="${SWELL_H}" x2="${W-PAD_R}" y2="${SWELL_H}" stroke="rgba(255,255,255,.06)" stroke-width="0.5"/>`;
+  svg+=`<line x1="${PAD_L}" y1="${SWELL_H}" x2="${W-PAD_R}" y2="${SWELL_H}" stroke="var(--border)" stroke-width="0.5"/>`;
 
   // ── GO bar (dashed) ──
   const goY=sy(goSwell);
@@ -1594,7 +1514,7 @@ function hourlySparkline(dd, diveWindow, tideInfo){
       svg+=`<polygon points="${firstX},${SWELL_H} ${shadePts.join(' ')} ${lastX},${SWELL_H}" fill="rgba(100,180,220,0.10)" stroke="none"/>`;
       // Vertical dashed tick at each high/low extreme + label (always at top, clear of bars)
       pts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach((p,pi)=>{
-        const xi=PAD_L+(p.h-SHOW_FROM)/(SHOW_TO-SHOW_FROM)*chartW;
+        const xi=PAD_L+(p.h-SHOW_FROM)*slotW+slotW/2;  // same x-mapping as the bars
         const idx=pts.indexOf(p);
         const prevHt=idx>0?pts[idx-1].ht:p.ht;
         const nextHt=idx<pts.length-1?pts[idx+1].ht:p.ht;
@@ -1642,7 +1562,7 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
 
   // Quality score per hour: 100 = perfect, 0 = undiveable
   function hourScore(h){
-    const {swell:es, wind:ew}=shield(site, h.swell, h.wind, h.windDir||0, h.swellDir||0, h.period);
+    const {swell:es, wind:ew}=shield(site, h.swell, h.wind, h.windDir, h.swellDir, h.period); // pass null dirs through — ||0 would fake a northerly
     let pf=1;
     if(h.period!=null){if(h.period<8)pf=0.80;else if(h.period<12)pf=1.00;else if(h.period<16)pf=1.20;else pf=1.40;}
     const effSwell=es*pf;
@@ -1685,7 +1605,7 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
     svg+=`<polygon points="${cx(0)},${H} ${shadePts.join(' ')} ${cx(n-1)},${H}" fill="rgba(100,180,220,0.10)" stroke="none"/>`;
     // Dashed vertical lines + labels collected for top-layer render
     tidePts.filter(p=>p.h>=SHOW_FROM&&p.h<=SHOW_TO).forEach((p,pi)=>{
-      const xi=PAD_L+(p.h-SHOW_FROM)/(SHOW_TO-SHOW_FROM)*chartW;
+      const xi=PAD_L+(p.h-SHOW_FROM)*slotW+slotW/2;  // same x-mapping as the bars/curve
       const idx=tidePts.indexOf(p);
       const prevHt=idx>0?tidePts[idx-1].ht:p.ht;
       const nextHt=idx<tidePts.length-1?tidePts[idx+1].ht:p.ht;
@@ -1796,6 +1716,8 @@ async function fetchAll(){
   WX={};
   const errEl=document.getElementById('fetch-error');
   if(errEl) errEl.style.display='none';
+  const zfEl=document.getElementById('zone-fail-banner');
+  if(zfEl) zfEl.style.display='none';
   render();
   loadBoMTides();
   updateTideNotice();
@@ -1804,8 +1726,9 @@ async function fetchAll(){
   await Promise.all([...zonePromises, fetchRain()]);
   render();
   updateNowStrip();
-  const allFailed=Object.values(WX).every(z=>z.error||!z.days?.length);
+  const allFailed=Object.values(WX).every(z=>z.failed||!z.days?.length);
   if(errEl && allFailed) errEl.style.display='block';
+  else checkZoneFailures();  // partial failures: show which zones are missing
 }
 
 function refreshAll(){ fetchAll(); }
@@ -1838,15 +1761,6 @@ function checkZoneFailures(){
     const el=document.getElementById('zone-fail-banner');
     if(el){ el.style.display='block'; el.textContent='⚠ Data unavailable for zones: '+failed.join(', ')+' — some site cards may be blank. Refresh to retry.'; }
   }
-}
-
-async function geocodePostcode(pc){
-  if(!/^\d{4}$/.test(pc)) return;
-  try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?postalcode='+encodeURIComponent(pc)+'&country=au&format=json&limit=1');
-    const d=await r.json();
-    if(d.length){ baseCoords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)}; render(); }
-  }catch(e){}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1888,9 +1802,24 @@ function render(){
   renderSites();
 }
 
+function goCountForDay(dateKey){
+  let n=0;
+  for(const site of SITES){
+    const dd=WX[site.region]?.days?.find(x=>x.date===dateKey);
+    if(dd&&assess(site,dd,PREFS).verdict==='GO') n++;
+  }
+  return n;
+}
+
 function renderTabs(){
   const el=document.getElementById('day-tabs');
   el.innerHTML='';
+  // Best day of the week ahead = most GO sites (today onwards, ties → earliest)
+  let bestDayIdx=-1, bestDayCount=0;
+  for(let i=1;i<DAYS;i++){
+    const c=goCountForDay(iso(i-1));
+    if(c>bestDayCount){ bestDayCount=c; bestDayIdx=i; }
+  }
   for(let i=0;i<DAYS;i++){
     const d=iso(i-1);  // i=0→yesterday, i=1→today, i=2→tomorrow…
     const v=dayBestVerdict(d);
@@ -1907,7 +1836,8 @@ function renderTabs(){
     const t=document.createElement('div');
     t.className='day-tab'+(isActive?' active':(i===0?' past':''))+(cal?.blocked?' blocked':'');
     t.onclick=()=>{ winOffset=i; render(); };
-    t.innerHTML='<span class="dn" style="color:'+col+';'+(i===0?'filter:saturate(.25) opacity(.7)':'')+'">'+dayLabel(d)+'</span><span class="dm">'+dayShort(d)+'</span>'+miniCond;
+    const star=i===bestDayIdx?'<span title="Best day this week — most GO sites ('+bestDayCount+')" style="color:var(--go);font-size:.6rem;margin-left:2px">★</span>':'';
+    t.innerHTML='<span class="dn" style="color:'+col+';'+(i===0?'filter:saturate(.25) opacity(.7)':'')+'">'+dayLabel(d)+star+'</span><span class="dm">'+dayShort(d)+'</span>'+miniCond;
     el.appendChild(t);
   }
 }
@@ -1944,6 +1874,17 @@ function renderVerdict(){
 
   const calBadge=cal?'<span class="cal-badge '+cal.type+'" style="margin-left:10px;vertical-align:middle;font-size:.62rem">'+cal.reason+'</span>':'';
 
+  // "Next GO" chip: when the viewed day isn't a GO, point at the next day that is
+  let nextGoChip='';
+  if(bestRes.verdict!=='GO'&&!cal?.blocked){
+    for(let i=Math.max(winOffset+1,1);i<DAYS;i++){
+      const d2=iso(i-1);
+      if(dayBestVerdict(d2)==='GO'){
+        nextGoChip='<div style="margin-top:8px"><span onclick="winOffset='+i+';render()" style="cursor:pointer;display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--go);background:var(--go-bg);border:1px solid var(--go);border-radius:5px;padding:4px 10px">→ next GO: '+fmtDate(d2)+'</span></div>';
+        break;
+      }
+    }
+  }
 
   const sitesBlock=cal?.blocked?'<div style="color:var(--muted);margin-top:10px;font-size:.72rem">'+cal.reason+'</div>':'';
 
@@ -1954,7 +1895,7 @@ function renderVerdict(){
         '<div class="vl">'+vt+calBadge+'</div>'+
         '<div class="seasonal-badge" style="flex:1;min-width:180px;margin:0;align-self:center">'+seasonalContext()+'</div>'+
       '</div>'+
-      sitesBlock+
+      sitesBlock+nextGoChip+
     '</div>'+(isPast?'</div>':'')+'';
 }
 
@@ -1974,6 +1915,20 @@ function renderOffshoreCard(){
 
   const swellCol=condColor(hd.swell,PREFS.maxSwell);
   const windCol=condColor(hd.wind,PREFS.maxWind);
+
+  // Day-over-day trend vs previous day (↑ building = worse, ↓ easing = better)
+  const pd=WX['Sydney Harbour']?.days?.find(x=>x.date===iso(winOffset-2))
+        ||WX['Eastern Suburbs']?.days?.find(x=>x.date===iso(winOffset-2));
+  const trend=(cur,prev,thresh)=>{
+    if(prev==null||cur==null) return '';
+    const dv=cur-prev;
+    if(dv>thresh)  return ' <span style="color:var(--maybe);font-size:.6rem" title="building vs yesterday">▲</span>';
+    if(dv<-thresh) return ' <span style="color:var(--go);font-size:.6rem" title="easing vs yesterday">▼</span>';
+    return '';
+  };
+  const swellTrend=winOffset>0?trend(hd.swell,pd?.swell,0.15):'';
+  const windTrend =winOffset>0?trend(hd.wind,pd?.wind,3):'';
+  const gustStr=hd.gust!=null&&hd.gust>=hd.wind+4?'gusts '+hd.gust.toFixed(0)+'kt':'';
   const tempCol=hd.temp?(wetsuitRec(hd.temp)?.good?'var(--go)':'var(--muted)'):'var(--muted)';
   const typTemp=SYDNEY_TEMPS[new Date().getMonth()].toFixed(1);
   const tempDiff=hd.temp?(hd.temp-parseFloat(typTemp)):null;
@@ -2004,9 +1959,9 @@ function renderOffshoreCard(){
         '<span style="font-size:.57rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</span>'+
         '<span style="font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
       '</div>'+
-      '<div class="offshore-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border)">'+
-        inlineMetric('Swell',swellBig,periodStr||'',false)+
-        inlineMetric('Wind',windBig,'',false)+
+      '<div class="offshore-metrics" style="display:grid;grid-template-columns:repeat('+(hd.temp?4:3)+',1fr);gap:0;border-bottom:1px solid var(--border)">'+
+        inlineMetric('Swell',swellBig+swellTrend,periodStr||'',false)+
+        inlineMetric('Wind',windBig+windTrend,gustStr,false)+
         (hd.temp?inlineMetric('Water',waterBig,tempDiffStr,false):'')+
         inlineMetric('Viz',vizBig,'',true)+
       '</div>'+
@@ -2041,11 +1996,15 @@ function rankSitesForDay(dateKey){
     })
     .sort((a,b)=>{
       const ord={GO:0,MAYBE:1,NO:2,loading:3};
-      return (ord[a.r.verdict]??3)-(ord[b.r.verdict]??3);
+      const d=(ord[a.r.verdict]??3)-(ord[b.r.verdict]??3);
+      if(d) return d;
+      // Within the same verdict, rank by effective conditions (lower = better)
+      const q=e=>e.r.eff?.swell!=null
+        ? e.r.eff.swell/PREFS.maxSwell*0.6 + e.r.eff.wind/PREFS.maxWind*0.4
+        : 99;
+      return q(a)-q(b);
     });
 }
-
-const VIZ_COVERED = new Set(['shelly-beach','bare-island','kurnell','camp-cove','fairlight','gordons-bay','shark-point']);
 
 const VIZ_TIDE_NOTES = {
   'bare-island': '⚠ High tide worsens entry — swell pushes harder over the NW ramp as water rises. Plan entry around mid-tide.',
@@ -2146,7 +2105,7 @@ function renderSites(){
         '<br><span style="opacity:.55">'+site.region+'</span>'+
         siteScoreChart(site, dd, dd?.date||'', bestDiveWindow(dd?.date||'', stationFor(site), dd, site).window)+
       '</div>';
-    return '<div class="feat-row" style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
+    return '<div class="feat-row" style="border-bottom:1px solid var(--border);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
       '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
         '<span style="width:7px;height:7px;border-radius:50%;background:'+dotCol+';flex-shrink:0"></span>'+
         '<span style="font-size:.75rem;flex:1">'+site.name+'</span>'+
@@ -2295,7 +2254,7 @@ function renderSites(){
     return '<div style="margin-top:14px">'+
       '<div class="ncs-row" style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--rim);cursor:pointer;user-select:none" data-sid="'+sid+'" onclick="toggleNCSSection(this.dataset.sid,this)">'+
         '<span style="font-size:.65rem;font-weight:700;color:var(--accent);background:var(--mid);border:1px solid var(--rim);border-radius:3px;padding:1px 7px;flex-shrink:0">'+key+'</span>'+
-        '<span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg);flex-shrink:0">'+meta.full+'</span>'+
+        '<span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text);flex-shrink:0">'+meta.full+'</span>'+
         '<span class="ncs-sub" style="font-size:.54rem;color:var(--muted)">'+meta.sub+'</span>'+
         '<span style="font-size:.58rem;color:var(--muted);margin-left:auto;flex-shrink:0">'+entries.length+' sites</span>'+
         '<span style="font-size:.65rem;font-weight:700;color:'+bc+';margin-left:10px;flex-shrink:0">'+best+'</span>'+
@@ -2343,23 +2302,6 @@ function toggleNCSSection(id,header){
   if(hidden) openNcsSections.add(key);
   else openNcsSections.delete(key);
 }
-
-function toggleAll(containerId){
-  const container = document.getElementById(containerId);
-  if(!container) return;
-  const cards = container.querySelectorAll('.site-card');
-  const anyOpen = Array.from(cards).some(c => c.classList.contains('open'));
-  cards.forEach(c => anyOpen ? c.classList.remove('open') : c.classList.add('open'));
-  const btn = container.querySelector('button[onclick^="toggleAll"]');
-  if(btn) btn.textContent = anyOpen ? 'expand all' : 'collapse all';
-}
-
-function navigate(dir){
-  const n=winOffset+dir*PER_VIEW;
-  if(n<0||n>=DAYS)return;
-  winOffset=n; render();
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BOOT
