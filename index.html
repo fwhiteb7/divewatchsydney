@@ -398,6 +398,34 @@ body::before {
 .feat-row:hover .feat-chev { color: var(--accent); opacity: 1; }
 .feat-row.open .feat-chev { transform: rotate(180deg); }
 
+/* ── Site detail modal ── */
+#site-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(8,12,18,.55);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  align-items: center; justify-content: center; padding: 20px;
+}
+#site-modal {
+  position: relative; background: var(--card); border: 1px solid var(--rim);
+  border-radius: 16px; box-shadow: 0 24px 64px -16px rgba(0,0,0,.45);
+  width: 100%; max-width: 640px; max-height: 86vh; overflow-y: auto;
+  padding: 18px 20px 20px; animation: modalIn .22s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+#site-modal-close {
+  position: absolute; top: 12px; right: 12px;
+  background: var(--mid); border: 1px solid var(--rim); color: var(--muted);
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  font-size: .85rem; line-height: 1; z-index: 2; transition: all .15s;
+}
+#site-modal-close:hover { color: var(--text); border-color: var(--accent); }
+#site-modal .card-body { display: block; border-top: none; padding: 0; }
+@media(max-width:560px){
+  #site-modal-overlay { padding: 0; align-items: flex-end; }
+  #site-modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 88vh; animation: sheetIn .25s ease; }
+}
+@keyframes sheetIn { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+
 /* ── Divider ── */
 hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity: .5; }
 
@@ -770,6 +798,13 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
   <div style="font-size:.68rem;color:var(--muted);margin-bottom:14px">&copy; Fred White 2026 &middot; personal aggregator, non-commercial use only</div>
   <a href="mailto:divewatchsydney@icloud.com" style="display:inline-block;color:var(--accent);text-decoration:none;font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:6px 18px;border:1px solid var(--accent);border-radius:6px;transition:all .15s;" onmouseover="this.style.background='var(--accent)';this.style.color='var(--surface)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">✉ Contact us</a>
 </div>
+<div id="site-modal-overlay" onclick="if(event.target===this)closeSiteModal()">
+  <div id="site-modal" role="dialog" aria-modal="true">
+    <button id="site-modal-close" onclick="closeSiteModal()" aria-label="Close">✕</button>
+    <div id="site-modal-content"></div>
+  </div>
+</div>
+
 </div><!-- .wrap -->
 
 <script>
@@ -1791,19 +1826,10 @@ function checkZoneFailures(){
 // RENDER
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Persist which NCS sections and site cards are open across day-tab switches
-const openSiteIds = new Set();
+// Persist which NCS sections are open across day-tab switches
 const openNcsSections = new Set();
 
-function toggleSiteCard(el){
-  const sid = el.dataset.sid;
-  el.classList.toggle('open');
-  if(el.classList.contains('open')) openSiteIds.add(sid);
-  else openSiteIds.delete(sid);
-}
-
 function reapplyOpenSites(){
-  // First re-open any NCS sections that were open
   openNcsSections.forEach(key=>{
     const el=document.getElementById('ncs-'+key);
     if(!el) return;
@@ -1811,11 +1837,106 @@ function reapplyOpenSites(){
     const chev=document.querySelector('.ncs-chev-'+key);
     if(chev) chev.style.transform='';
   });
-  // Then re-open individual site cards (may be inside those sections)
-  openSiteIds.forEach(sid=>{
-    const el=document.querySelector('.site-card[data-sid="'+sid+'"]');
-    if(el) el.classList.add('open');
-  });
+}
+
+// ── Site detail modal ──
+let modalSiteId=null;
+
+function openSiteModal(sid){
+  modalSiteId=sid;
+  renderSiteModal();
+  const ov=document.getElementById('site-modal-overlay');
+  if(ov) ov.style.display='flex';
+  if(document.body) document.body.style.overflow='hidden';
+}
+
+function closeSiteModal(){
+  modalSiteId=null;
+  const ov=document.getElementById('site-modal-overlay');
+  if(ov) ov.style.display='none';
+  if(document.body) document.body.style.overflow='';
+}
+
+function renderSiteModal(){
+  if(!modalSiteId) return;
+  const site=SITES.find(s=>s.id===modalSiteId);
+  if(!site) return;
+  const d=iso(winOffset-1);
+  const dd=WX[site.region]?.days?.find(x=>x.date===d);
+  const r=assess(site,dd,PREFS);
+  const el=document.getElementById('site-modal-content');
+  if(el) el.innerHTML=buildSiteDetailHTML(site,r,dd,d);
+}
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSiteModal(); });
+
+// Full site detail — shown inside the modal
+function buildSiteDetailHTML(site,r,dd,d){
+  const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site), dd, site);
+  const v=r.verdict;
+  const vCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'var(--no)';
+  const tags=[];
+  if(site.entry==='boat')    tags.push('<span class="tag boat">BOAT</span>');
+  if(site.buddyOnly)         tags.push('<span class="tag buddy">BUDDY</span>');
+  if(site.depthMax>28)       tags.push('<span class="tag deep">DEEP</span>');
+  if(site.notes.toLowerCase().includes('reserve')) tags.push('<span class="tag reserve">RESERVE</span>');
+  if(site.shelterDir==='harbour') tags.push('<span class="tag shelter">HARBOUR</span>');
+  const curMonth=new Date().getMonth();
+  const activeWildlife=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth));
+  const swellDirStr=dd?.swellDir!=null?'<span style="font-size:.58rem;color:var(--accent);opacity:0.7"> '+deg2cp(dd.swellDir)+'</span>':'';
+  const windDirStr=dd?.windDir!=null?'<span style="font-size:.58rem;color:var(--accent);opacity:0.7"> '+deg2cp(dd.windDir)+'</span>':'';
+  let condLine='';
+  if(r.eff?.swell!=null){
+    condLine='<span style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</span>'+swellDirStr+' <span style="color:var(--muted)">/</span> <span style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</span>'+windDirStr;
+  } else if(dd){
+    condLine='<span style="color:'+condColor(dd.swell,PREFS.maxSwell)+'">'+dd.swell.toFixed(2)+'m</span>'+swellDirStr+' <span style="color:var(--muted)">/</span> <span style="color:'+condColor(dd.wind,PREFS.maxWind)+'">'+dd.wind.toFixed(1)+'kt</span>'+windDirStr;
+  }
+  const tempLine=dd?.temp?'<span style="color:'+(wetsuitRec(dd.temp)?.good?'var(--go)':'var(--muted)')+'">'+dd.temp.toFixed(1)+'°C · '+(wetsuitRec(dd.temp)?.suit||'?')+'</span>':'';
+  const bodyEffLine=r.eff?.swell!=null&&dd
+    ? '<div class="cond-detail">Effective at site<span class="eff-info" data-tip="Effective = zone forecast adjusted for this site\'s shelter, exposure direction and swell period." title="Effective = zone forecast adjusted for this site\'s shelter, exposure direction and swell period.">i</span>: <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong>'+swellDirStr+(dd.period!=null?' · <strong>'+dd.period.toFixed(0)+'s</strong> period'+(dd.period>=14?' ⚠ long':dd.period>=10?' moderate':' short'):'')
+      +' · <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong>'+windDirStr
+      +' <span style="opacity:.45"> (Forecast Zone '+site.region+': '+dd.swell.toFixed(2)+'m'+(dd.swellDir!=null?' '+deg2cp(dd.swellDir):'')+(dd.period!=null?' · '+dd.period.toFixed(0)+'s':'')+' · '+dd.wind.toFixed(1)+'kt'+(dd.windDir!=null?' '+deg2cp(dd.windDir):'')+') </span></div>'
+    : '';
+  const shelterLine=(()=>{
+    const sd=site.shelterDir, ed=site.exposedDir;
+    const shelter=sd==='harbour'?'all directions (harbour)':Array.isArray(sd)&&sd.length?sd.join('/'):null;
+    const exposed=Array.isArray(ed)&&ed.length?ed.join('/'):null;
+    if(!shelter&&!exposed) return '';
+    return '<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">🧭 '+(shelter?'Sheltered: <span style="color:var(--text);opacity:.7">'+shelter+'</span>':'')+
+      (shelter&&exposed?' · ':'')+
+      (exposed?'Exposed: <span style="color:var(--text);opacity:.7">'+exposed+'</span>':'')+
+    '</div>';
+  })();
+  return (
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-right:32px;margin-bottom:10px">'+
+      '<div style="min-width:0">'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1.4rem;letter-spacing:.03em;line-height:1.1">'+site.name+' <a href="https://www.google.com/maps?q='+site.lat+','+site.lng+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;font-size:.56rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:10px;background:rgba(90,122,154,.12);border:1px solid rgba(90,122,154,.30);color:var(--muted);text-decoration:none;vertical-align:middle;margin-left:3px" title="'+site.lat.toFixed(4)+', '+site.lng.toFixed(4)+'">📍 map</a></div>'+
+        '<div style="font-size:.64rem;color:var(--muted);margin-top:4px">'+site.region+' · '+fmtDate(d)+' · '+tags.join('')+'</div>'+
+        (activeWildlife.length?'<div style="margin-top:5px">'+activeWildlife.map(w=>'<span class="wildlife-badge">'+w.icon+' '+w.label+'</span>').join('')+'</div>':'')+
+      '</div>'+
+      '<div style="text-align:right;flex-shrink:0">'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:1.6rem;letter-spacing:.05em;line-height:1;color:'+vCol+'">'+v+'</div>'+
+        (condLine?'<div style="font-size:.68rem;margin-top:4px">'+condLine+'</div>':'')+
+        (tempLine?'<div style="font-size:.64rem;margin-top:2px">'+tempLine+'</div>':'')+
+      '</div>'+
+    '</div>'+
+    '<div class="card-body">'+
+      bodyEffLine+
+      '<strong>'+r.verdict+'</strong> — '+r.reason+'<br>'+
+      site.notes+'<br>'+
+      '<span style="opacity:.6">Depth: '+site.depthMin+'–'+site.depthMax+'m · Entry: '+site.entry+(site.buddyOnly?' · ⚠ BUDDY REQUIRED':'')+'</span>'+
+      shelterLine+
+      '<div style="border-top:1px solid var(--border);margin:10px 0 8px">'+
+      '<div style="font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
+      (site.tideAdvice?'<div class="tide-advice">🌊 Tide: '+site.tideAdvice+'</div>':'')+
+      '</div>'+
+      '<div style="border-top:1px solid var(--border);padding-top:8px">'+
+      vizSeasonStrip(site)+
+      surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+
+      '</div>'+
+      siteScoreChart(site, dd, d, diveWindow)+
+    '</div>'
+  );
 }
 
 function render(){
@@ -1824,6 +1945,7 @@ function render(){
   renderOffshoreCard();
   renderTable();
   renderSites();
+  renderSiteModal();  // keep open modal in sync with day switches / data refresh
 }
 
 function goCountForDay(dateKey){
@@ -2069,6 +2191,48 @@ function surgeInfo(dd, site, compact){
   return '<div style="margin-top:4px;font-size:.62rem;color:var(--maybe)">🌊 <span class="surge-warn">⚠ Surge throughout dive</span> ('+dd.period.toFixed(0)+'s period — clears at '+sd+'m)</div>';
 }
 
+// ── Seasonal viz data (McFadyen 2200+ dive analysis + site-specific records) ──
+// peak/poor: month indices 0=Jan…11=Dec  |  note: shown on site card
+// Sydney baseline: Jun best (29% >15m viz), Oct–Nov worst (28% <7m viz) — spring plankton blooms + rain
+const VIZ_SEASON = {
+  'clifton-gardens':    { peak:[],        poor:[],     note:'Harbour site: consistent 3–5m year-round (tide more important than season). Up to 10m possible.' },
+  'camp-cove':          { peak:[5,6,7],   poor:[9,10], note:'Harbour site (5–8m typical). Best Jun–Aug; avoid post-heavy rain (stormwater runoff).' },
+  'fairlight':          { peak:[5,6,7],   poor:[9,10], note:'Harbour site (5–8m typical). Best Jun–Aug; shallow reef impassable at low tide.' },
+  'little-manly-point': { peak:[5,6,7],   poor:[9,10], note:'Harbour site. Best Jun–Aug.' },
+  'shelly-beach-manly': { peak:[5,6,7],   poor:[9,10], note:'Marine reserve — good year-round. Sydney baseline: best Jun–Aug, worst Oct–Nov (plankton).' },
+  'long-reef':          { peak:[4,5,6,7,8],poor:[9,10],note:'Exposed headland. Best May–Sep (winter clarity). Oct–Nov worst — spring plankton blooms.' },
+  'shark-point':        { peak:[4,5,6,7,8],poor:[9,10],note:'Avg 10–15m; 20m recorded May & mid-winter. Access restrictions apply Oct–Apr at Clovelly Pool entry.' },
+  'gordons-bay':        { peak:[5,6,7],   poor:[9,10], note:'Avg 5–10m. Better on incoming tide; avoid post-rain (stormwater). Best Jun–Aug.' },
+  'bare-island':        { peak:[4,5,6,7,11,0],poor:[9,10],note:'Avg ~10m (improved dramatically post-1999; was 3–5m). 15–20m recorded May & Dec–Jan. Drops to 1–2m after 100mm+ rain (Botany Bay site).' },
+  'kurnell':            { peak:[5,6,7],   poor:[9,10], note:'Botany Bay site. Best Jun–Aug; susceptible to runoff after heavy rain (100mm+ threshold).' },
+  'henry-head':         { peak:[5,6,7],   poor:[9,10], note:'Botany Bay. Best Jun–Aug for clarity. Outstanding sponge gardens — plan for winter to catch peak viz.' },
+  'magic-point':        { peak:[4,5,6,7,8],poor:[9,10],note:'Open ocean eastern suburbs. Avg ~10–15m. Grey nurse sharks more reliably seen May–Sep (cooler months).' },
+  'inscription-point':  { peak:[4,5,6,7,8],poor:[9,10],note:"McFadyen's top seadragon site. Plan Jun–Aug for best viz + most active life. Best on incoming tide." },
+  'barrens-hut':        { peak:[4,5,6,7,8],poor:[9,10],note:'Avg 15m; peaks 25–30m (May & Jul logged by McFadyen). NatPark catchment = minimal runoff. Sydney\'s best reef dive.' },
+  'the-cutting':        { peak:[4,5,6,7,8],poor:[9,10],note:'National Park site. Best May–Sep. Port Jackson sharks Jul–Nov.' },
+  'marley-point':       { peak:[4,5,6,7,8],poor:[9,10],note:'Exposed southern face — best conditions in winter. NatPark catchment = cleaner water than harbour sites.' },
+  'wattamolla-point':   { peak:[4,5,6,7,8],poor:[9,10],note:'Deep 20–27m sponge gardens. Best May–Sep for clarity. Long period swell creates surge even on calm days.' },
+  'shiprock':           { peak:[5,6,7],   poor:[9,10], note:'Avg ~10m since 2000; primarily tide-driven not seasonal. Crashes after 100mm+ rain. Port Hacking estuary site.' },
+  'pizza-reef':         { peak:[4,5,6,7,8],poor:[9,10],note:'18m+ reported regularly. NatPark (like Barrens Hut). Port Jackson sharks in winter; humpbacks Jun–Jul.' },
+  'middle-ground':      { peak:[4,5,6,7,8],poor:[9,10],note:'McFadyen #4 most-dived. Consistently clear — offshore Botany Bay. Post-flood can crash (1m viz after 450mm event).' },
+  'the-leap':           { peak:[4,5,6,7,8],poor:[9,10],note:'Royal NatPark. Best May–Sep.' },
+  'bushrangers-bay':    { peak:[3,4,5,6,7,8],poor:[10,11],note:'South Coast — typically clearer than Sydney. Peak Apr–Sep. Grey nurses Apr–Jun & Nov–Jan.' },
+  'the-gutter':         { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast sheltered gutter. Diveable in gale-force southerlies. Best Apr–Oct; seadragons & gorgonias 18–20m.' },
+  'bass-point-bommie':  { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast open ocean. Best Apr–Oct. Exposed to S swell — calm conditions essential. Exceptional fishlife.' },
+  'toothbrush-island':  { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast (Shellharbour). Best Apr–Oct. Excellent offshore clarity; seadragons in gutters.' },
+  'martin-island':      { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast offshore. Sea lions year-round. Best Apr–Oct. Wall to 25–30m.' },
+  'afghan-reef':        { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'Kiama, South Coast — cleaner than Sydney. Best Apr–Oct. Seadragons at 18m; fishermen lines on NW exit route.' },
+  'foggy-cave':         { peak:[4,5,6,7,8],poor:[9,10],note:'Deco site 3km offshore Terrigal. Good viz critical at 30–39m — plan for Jun–Aug peak.' },
+  'lighthouse-reef':    { peak:[4,5,6,7,8],poor:[9,10],note:'Norah Head. Open ocean, generally clear. Best May–Sep. Port Jackson sharks Aug–Oct.' },
+};
+
+  function vizSeasonStrip(site){
+  const vs=VIZ_SEASON[site.id];
+  if(!vs||!vs.note) return '';
+  return '<div style="margin-top:6px;font-size:.59rem;color:var(--muted)">👁 '+vs.note+'</div>';
+}
+
+
 function renderSites(){
   const d=iso(winOffset-1);
   const ranked=rankSitesForDay(d);
@@ -2102,36 +2266,16 @@ function renderSites(){
     const textCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'var(--muted)';
     const curMonth=new Date().getMonth();
     const activeWildlife=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth));
-    const effSwellDir=dd?.swellDir!=null?' <span style="font-size:.58rem;color:var(--accent);opacity:0.7">'+deg2cp(dd.swellDir)+'</span>':'';
-    const effWindDir=dd?.windDir!=null?' <span style="font-size:.58rem;color:var(--accent);opacity:0.7">'+deg2cp(dd.windDir)+'</span>':'';
-    const effStr=r.eff?.swell!=null
-      ? '<span style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</span>'+effSwellDir
-        +' <span style="color:var(--muted)">/</span>'
-        +' <span style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</span>'+effWindDir
-      : '';
     const regionLabel=FEATURED_LABELS[site.id]||'';
-    const detailHtml=
-      '<div style="padding:3px 0 7px 14px;font-size:.63rem;color:var(--muted)">'+
-        r.reason+
-        (effStr?'<br>Effective: '+effStr:'')+
-        (dd?.temp?'<br><span style="color:'+(wetsuitRec(dd.temp)?.good?'var(--go)':'var(--muted)')+'">'+dd.temp.toFixed(1)+'°C · '+(wetsuitRec(dd.temp)?.suit||'?')+'</span>':'')+
-        (site.tideAdvice?'<br>🌊 '+site.tideAdvice:'')+
-        surgeInfo(dd, site, true)+
-        rainWarn(site)+vizTideNote(site,true)+
-        (activeWildlife.length?'<br>'+activeWildlife.map(w=>w.icon+' '+w.label).join(' · '):'')+
-        '<br><span style="opacity:.55">'+site.region+'</span>'+
-        siteScoreChart(site, dd, dd?.date||'', bestDiveWindow(dd?.date||'', stationFor(site), dd, site).window)+
-      '</div>';
-    return '<div class="feat-row" style="border-bottom:1px solid var(--border);cursor:pointer" onclick="this.classList.toggle(\'open\');const d=this.querySelector(\'.sd\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">'+
+    return '<div class="feat-row" style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openSiteModal(\''+site.id+'\')">'+
       '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
         '<span style="width:7px;height:7px;border-radius:50%;background:'+dotCol+';flex-shrink:0"></span>'+
         '<span style="font-size:.75rem;flex:1">'+site.name+'</span>'+
         (activeWildlife.length?'<span style="font-size:.7rem;margin-right:2px">'+activeWildlife.map(w=>w.icon).join('')+'</span>':'')+
         (regionLabel?'<span style="font-size:.55rem;color:var(--muted);background:rgba(255,255,255,.07);border-radius:3px;padding:1px 4px;margin-right:3px">'+regionLabel+'</span>':'')+
         '<span style="font-size:.65rem;font-weight:600;color:'+textCol+'">'+v+'</span>'+
-        '<span class="feat-chev">▾</span>'+
+        '<span class="feat-chev">›</span>'+
       '</div>'+
-      '<div class="sd" style="display:none">'+detailHtml+'</div>'+
     '</div>';
   }
 
@@ -2139,41 +2283,6 @@ function renderSites(){
     '<div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px">Featured sites</div>'+
     '<div style="font-size:.55rem;color:var(--muted);opacity:.6;margin-bottom:8px">N = north · E = eastern · S = south · IL = illawarra</div>'+
     featuredRanked.map(compactRow).join('');
-
-  // ── Seasonal viz data (McFadyen 2200+ dive analysis + site-specific records) ──
-  // peak/poor: month indices 0=Jan…11=Dec  |  note: shown on site card
-  // Sydney baseline: Jun best (29% >15m viz), Oct–Nov worst (28% <7m viz) — spring plankton blooms + rain
-  const VIZ_SEASON = {
-    'clifton-gardens':    { peak:[],        poor:[],     note:'Harbour site: consistent 3–5m year-round (tide more important than season). Up to 10m possible.' },
-    'camp-cove':          { peak:[5,6,7],   poor:[9,10], note:'Harbour site (5–8m typical). Best Jun–Aug; avoid post-heavy rain (stormwater runoff).' },
-    'fairlight':          { peak:[5,6,7],   poor:[9,10], note:'Harbour site (5–8m typical). Best Jun–Aug; shallow reef impassable at low tide.' },
-    'little-manly-point': { peak:[5,6,7],   poor:[9,10], note:'Harbour site. Best Jun–Aug.' },
-    'shelly-beach-manly': { peak:[5,6,7],   poor:[9,10], note:'Marine reserve — good year-round. Sydney baseline: best Jun–Aug, worst Oct–Nov (plankton).' },
-    'long-reef':          { peak:[4,5,6,7,8],poor:[9,10],note:'Exposed headland. Best May–Sep (winter clarity). Oct–Nov worst — spring plankton blooms.' },
-    'shark-point':        { peak:[4,5,6,7,8],poor:[9,10],note:'Avg 10–15m; 20m recorded May & mid-winter. Access restrictions apply Oct–Apr at Clovelly Pool entry.' },
-    'gordons-bay':        { peak:[5,6,7],   poor:[9,10], note:'Avg 5–10m. Better on incoming tide; avoid post-rain (stormwater). Best Jun–Aug.' },
-    'bare-island':        { peak:[4,5,6,7,11,0],poor:[9,10],note:'Avg ~10m (improved dramatically post-1999; was 3–5m). 15–20m recorded May & Dec–Jan. Drops to 1–2m after 100mm+ rain (Botany Bay site).' },
-    'kurnell':            { peak:[5,6,7],   poor:[9,10], note:'Botany Bay site. Best Jun–Aug; susceptible to runoff after heavy rain (100mm+ threshold).' },
-    'henry-head':         { peak:[5,6,7],   poor:[9,10], note:'Botany Bay. Best Jun–Aug for clarity. Outstanding sponge gardens — plan for winter to catch peak viz.' },
-    'magic-point':        { peak:[4,5,6,7,8],poor:[9,10],note:'Open ocean eastern suburbs. Avg ~10–15m. Grey nurse sharks more reliably seen May–Sep (cooler months).' },
-    'inscription-point':  { peak:[4,5,6,7,8],poor:[9,10],note:"McFadyen's top seadragon site. Plan Jun–Aug for best viz + most active life. Best on incoming tide." },
-    'barrens-hut':        { peak:[4,5,6,7,8],poor:[9,10],note:'Avg 15m; peaks 25–30m (May & Jul logged by McFadyen). NatPark catchment = minimal runoff. Sydney\'s best reef dive.' },
-    'the-cutting':        { peak:[4,5,6,7,8],poor:[9,10],note:'National Park site. Best May–Sep. Port Jackson sharks Jul–Nov.' },
-    'marley-point':       { peak:[4,5,6,7,8],poor:[9,10],note:'Exposed southern face — best conditions in winter. NatPark catchment = cleaner water than harbour sites.' },
-    'wattamolla-point':   { peak:[4,5,6,7,8],poor:[9,10],note:'Deep 20–27m sponge gardens. Best May–Sep for clarity. Long period swell creates surge even on calm days.' },
-    'shiprock':           { peak:[5,6,7],   poor:[9,10], note:'Avg ~10m since 2000; primarily tide-driven not seasonal. Crashes after 100mm+ rain. Port Hacking estuary site.' },
-    'pizza-reef':         { peak:[4,5,6,7,8],poor:[9,10],note:'18m+ reported regularly. NatPark (like Barrens Hut). Port Jackson sharks in winter; humpbacks Jun–Jul.' },
-    'middle-ground':      { peak:[4,5,6,7,8],poor:[9,10],note:'McFadyen #4 most-dived. Consistently clear — offshore Botany Bay. Post-flood can crash (1m viz after 450mm event).' },
-    'the-leap':           { peak:[4,5,6,7,8],poor:[9,10],note:'Royal NatPark. Best May–Sep.' },
-    'bushrangers-bay':    { peak:[3,4,5,6,7,8],poor:[10,11],note:'South Coast — typically clearer than Sydney. Peak Apr–Sep. Grey nurses Apr–Jun & Nov–Jan.' },
-    'the-gutter':         { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast sheltered gutter. Diveable in gale-force southerlies. Best Apr–Oct; seadragons & gorgonias 18–20m.' },
-    'bass-point-bommie':  { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast open ocean. Best Apr–Oct. Exposed to S swell — calm conditions essential. Exceptional fishlife.' },
-    'toothbrush-island':  { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast (Shellharbour). Best Apr–Oct. Excellent offshore clarity; seadragons in gutters.' },
-    'martin-island':      { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'South Coast offshore. Sea lions year-round. Best Apr–Oct. Wall to 25–30m.' },
-    'afghan-reef':        { peak:[3,4,5,6,7,8,9],poor:[10,11],note:'Kiama, South Coast — cleaner than Sydney. Best Apr–Oct. Seadragons at 18m; fishermen lines on NW exit route.' },
-    'foggy-cave':         { peak:[4,5,6,7,8],poor:[9,10],note:'Deco site 3km offshore Terrigal. Good viz critical at 30–39m — plan for Jun–Aug peak.' },
-    'lighthouse-reef':    { peak:[4,5,6,7,8],poor:[9,10],note:'Norah Head. Open ocean, generally clear. Best May–Sep. Port Jackson sharks Aug–Oct.' },
-  };
 
   const REGION_NCS={'Sydney Harbour':'NB','Northern Beaches':'NB','Central Coast':'NB','Eastern Suburbs':'EB','Botany / South':'EB','Royal Nat Park':'SS','Kiama':'IL','Illawarra':'IL'};
   const NCS_META={
@@ -2185,14 +2294,7 @@ function renderSites(){
   const ncsGrouped={NB:[],EB:[],SS:[],IL:[]};
   restRanked.forEach(e=>{const g=REGION_NCS[e.site.region]||'SS';ncsGrouped[g].push(e);});
 
-  function vizSeasonStrip(site){
-    const vs=VIZ_SEASON[site.id];
-    if(!vs||!vs.note) return '';
-    return '<div style="margin-top:6px;font-size:.59rem;color:var(--muted)">👁 '+vs.note+'</div>';
-  }
-
   function buildSiteCard({site,r,dd}){
-    const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site), dd, site);
     const v=r.verdict.toLowerCase();
     const tags=[];
     if(site.entry==='boat')    tags.push('<span class="tag boat">BOAT</span>');
@@ -2213,14 +2315,8 @@ function renderSites(){
       condLine='<span style="color:'+sc+'">'+dd.swell.toFixed(2)+'m</span>'+swellDirStr+' <span style="color:var(--muted)">/</span> <span style="color:'+wc+'">'+dd.wind.toFixed(1)+'kt</span>'+windDirStr;
     }
     if(dd?.temp){ const ws=wetsuitRec(dd.temp); condLine2='<span style="color:'+(ws?.good?'var(--go)':'var(--muted)')+'">'+dd.temp.toFixed(1)+'°C</span>'; }
-    const periodStr=dd?.period!=null?' · '+dd.period.toFixed(0)+'s period'+(dd.period>=14?' ⚠ long':dd.period>=10?' moderate':' short'):'';
-    const bodyEffLine=r.eff?.swell!=null
-      ? '<div class="cond-detail">Effective at site<span class="eff-info" data-tip="Effective = zone forecast adjusted for this site\'s shelter, exposure direction and swell period." title="Effective = zone forecast adjusted for this site\'s shelter, exposure direction and swell period.">i</span>: <strong style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</strong>'+swellDirStr+(dd?.period!=null?' · <strong>'+dd.period.toFixed(0)+'s</strong> period'+(dd.period>=14?' ⚠ long':dd.period>=10?' moderate':' short'):'')
-        +' · <strong style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</strong>'+windDirStr
-        +' <span style="opacity:.45"> (Forecast Zone '+site.region+': '+dd.swell.toFixed(2)+'m'+(dd.swellDir!=null?' '+deg2cp(dd.swellDir):'')+( dd?.period!=null?' · '+dd.period.toFixed(0)+'s':'')+' · '+dd.wind.toFixed(1)+'kt'+(dd.windDir!=null?' '+deg2cp(dd.windDir):'')+') </span></div>'
-      : '';
     return (
-      '<div class="site-card '+v+'" data-sid="'+site.id+'" onclick="toggleSiteCard(this)">'+
+      '<div class="site-card '+v+'" data-sid="'+site.id+'" onclick="openSiteModal(\''+site.id+'\')">'+
         '<div class="card-head">'+
           '<div class="dot"></div>'+
           '<div class="card-info">'+
@@ -2230,31 +2326,7 @@ function renderSites(){
           '</div>'+
           '<div class="card-cond">'+condLine+(condLine2?'<br>'+condLine2:'')+
           '</div>'+
-        '</div>'+
-        '<div class="card-body">'+
-          bodyEffLine+
-          '<strong>'+r.verdict+'</strong> — '+r.reason+'<br>'+
-          site.notes+'<br>'+
-          '<span style="opacity:.6">Depth: '+site.depthMin+'–'+site.depthMax+'m · Entry: '+site.entry+(site.buddyOnly?' · ⚠ BUDDY REQUIRED':'')+'</span>'+
-          (()=>{
-            const sd=site.shelterDir, ed=site.exposedDir;
-            const shelter=sd==='harbour'?'all directions (harbour)':Array.isArray(sd)&&sd.length?sd.join('/'):null;
-            const exposed=Array.isArray(ed)&&ed.length?ed.join('/'):null;
-            if(!shelter&&!exposed) return '';
-            return '<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">🧭 '+(shelter?'Sheltered: <span style="color:var(--text);opacity:.7">'+shelter+'</span>':'')+
-              (shelter&&exposed?' · ':'')+
-              (exposed?'Exposed: <span style="color:var(--text);opacity:.7">'+exposed+'</span>':'')+
-            '</div>';
-          })()+
-          '<div style="border-top:1px solid var(--border);margin:10px 0 8px">'+
-          '<div style="font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
-          (site.tideAdvice?'<div class="tide-advice">🌊 Tide: '+site.tideAdvice+'</div>':'')+
-          '</div>'+
-          '<div style="border-top:1px solid var(--border);padding-top:8px">'+
-          vizSeasonStrip(site)+
-          surgeInfo(dd,site,false)+rainWarn(site)+vizTideNote(site,false)+
-          '</div>'+
-          siteScoreChart(site, dd, d, diveWindow)+
+          '<span class="feat-chev" style="align-self:center">›</span>'+
         '</div>'+
       '</div>'
     );
