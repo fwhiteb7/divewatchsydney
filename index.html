@@ -2437,7 +2437,7 @@ function renderSites(){
     '</div>';
   }
 
-  const anyFilter=FILTERS.shore||FILTERS.solo||FILTERS.go;
+  const anyFilter=Object.values(FILTERS).some(Boolean);
   document.getElementById('site-rest-area').innerHTML=
     '<div style="display:flex;align-items:center;margin-top:18px;margin-bottom:2px">'+
       '<div style="display:flex;align-items:baseline;gap:10px">'+
@@ -2448,6 +2448,8 @@ function renderSites(){
     filterChipsHTML()+
     (anyFilter&&!restRanked.length?'<div style="font-size:.65rem;color:var(--muted);padding:10px 0">No sites match the current filters.</div>':'')+
     buildNCSSection('NB')+buildNCSSection('EB')+buildNCSSection('SS')+buildNCSSection('IL');
+  // A region filtered out of view loses its open state — it comes back collapsed
+  ['NB','EB','SS','IL'].forEach(k=>{ if(!ncsGrouped[k].length) openNcsSections.delete(k); });
   reapplyOpenSites();
 }
 
