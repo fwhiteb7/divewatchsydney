@@ -2285,8 +2285,12 @@ const VIZ_SEASON = {
 
 
 // ── Site list filters (persisted) ──
-const FILTERS={shore:false,solo:false,go:false};
-try{ Object.assign(FILTERS, JSON.parse(localStorage.getItem('dws-filters')||'{}')); }catch(e){}
+const FILTERS={shore:false,go:false};
+try{
+  const saved=JSON.parse(localStorage.getItem('dws-filters')||'{}');
+  if(saved.shore!=null) FILTERS.shore=saved.shore;
+  if(saved.go!=null)    FILTERS.go=saved.go;
+}catch(e){}
 function toggleFilter(k){
   FILTERS[k]=!FILTERS[k];
   try{ localStorage.setItem('dws-filters', JSON.stringify(FILTERS)); }catch(e){}
@@ -2294,7 +2298,6 @@ function toggleFilter(k){
 }
 function passesFilters(e){
   if(FILTERS.shore && e.site.entry!=='shore') return false;
-  if(FILTERS.solo  && !e.site.solo)           return false;
   if(FILTERS.go    && e.r.verdict!=='GO')     return false;
   return true;
 }
@@ -2302,7 +2305,6 @@ function filterChipsHTML(){
   const chip=(k,label,title)=>'<button class="chip'+(FILTERS[k]?' active':'')+'" onclick="toggleFilter(\''+k+'\')" title="'+title+'">'+label+'</button>';
   return '<div class="chips-row">'+
     chip('shore','🏖 Shore','Shore-entry sites only')+
-    chip('solo','🤿 Solo OK','Sites diveable solo')+
     chip('go','✓ GO only','Only sites rated GO today')+
   '</div>';
 }
