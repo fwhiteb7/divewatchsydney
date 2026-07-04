@@ -439,6 +439,7 @@ body::before {
 .chip.v-go.active    { color: var(--go);    border-color: var(--go);    background: var(--go-bg); }
 .chip.v-maybe.active { color: var(--maybe); border-color: var(--maybe); background: var(--maybe-bg); }
 .chip.v-no.active    { color: var(--no);    border-color: var(--no);    background: var(--no-bg); }
+.chips-sep { width: 1px; align-self: stretch; background: var(--rim); margin: 2px 3px; }
 
 /* ── Site detail modal ── */
 #site-modal-overlay {
@@ -2288,10 +2289,11 @@ const VIZ_SEASON = {
 
 
 // ── Site list filters (persisted) ──
-const FILTERS={shore:false,vGo:false,vMaybe:false,vNo:false};
+const REGION_NCS={'Sydney Harbour':'NB','Northern Beaches':'NB','Central Coast':'NB','Eastern Suburbs':'EB','Botany / South':'EB','Royal Nat Park':'SS','Kiama':'IL','Illawarra':'IL'};
+const FILTERS={vGo:false,vMaybe:false,vNo:false,rNB:false,rEB:false,rSS:false,rIL:false};
 try{
   const saved=JSON.parse(localStorage.getItem('dws-filters')||'{}');
-  for(const k of ['shore','vGo','vMaybe','vNo']) if(saved[k]!=null) FILTERS[k]=saved[k];
+  for(const k of Object.keys(FILTERS)) if(saved[k]!=null) FILTERS[k]=saved[k];
   if(saved.go) FILTERS.vGo=true; // migrate old single GO filter
 }catch(e){}
 function toggleFilter(k){
@@ -2300,21 +2302,29 @@ function toggleFilter(k){
   render();
 }
 function passesFilters(e){
-  if(FILTERS.shore && e.site.entry!=='shore') return false;
   // Verdict chips: if any are on, the site's verdict must match one of them
   if(FILTERS.vGo||FILTERS.vMaybe||FILTERS.vNo){
     const v=e.r.verdict;
     if(!((FILTERS.vGo&&v==='GO')||(FILTERS.vMaybe&&v==='MAYBE')||(FILTERS.vNo&&v==='NO'))) return false;
+  }
+  // Region chips: if any are on, the site's area must match one of them
+  if(FILTERS.rNB||FILTERS.rEB||FILTERS.rSS||FILTERS.rIL){
+    const g=REGION_NCS[e.site.region]||'SS';
+    if(!FILTERS['r'+g]) return false;
   }
   return true;
 }
 function filterChipsHTML(){
   const chip=(k,label,title,cls)=>'<button class="chip '+(cls||'')+(FILTERS[k]?' active':'')+'" onclick="toggleFilter(\''+k+'\')" title="'+title+'">'+label+'</button>';
   return '<div class="chips-row">'+
-    chip('shore','🏖 Shore','Shore-entry sites only')+
     chip('vGo','✓ GO','Sites rated GO today','v-go')+
     chip('vMaybe','? MAYBE','Sites rated MAYBE today','v-maybe')+
     chip('vNo','✕ NO','Sites rated NO today','v-no')+
+    '<span class="chips-sep"></span>'+
+    chip('rNB','NB','Northern Beaches & Sydney Harbour')+
+    chip('rEB','EB','Eastern Suburbs & Botany Bay')+
+    chip('rSS','SS','Southern Sydney — Royal NP / Port Hacking')+
+    chip('rIL','IL','Illawarra & Kiama')+
   '</div>';
 }
 
@@ -2354,7 +2364,6 @@ function renderSites(){
 
   const restRanked=ranked.filter(passesFilters);
 
-  const REGION_NCS={'Sydney Harbour':'NB','Northern Beaches':'NB','Central Coast':'NB','Eastern Suburbs':'EB','Botany / South':'EB','Royal Nat Park':'SS','Kiama':'IL','Illawarra':'IL'};
   const NCS_META={
     NB:{full:'NORTHERN BEACHES & SYDNEY HARBOUR',sub:'Sydney Harbour · Northern Beaches · Central Coast'},
     EB:{full:'EASTERN SUBURBS & BOTANY BAY',sub:'Eastern Suburbs · Botany Bay'},
