@@ -191,8 +191,17 @@ body::before {
 }
 .hard-ceiling-note span { color: var(--no); }
 
-/* ── Day navigator ── */
-.day-nav { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; }
+/* ── Day navigator — sticky so the tabs stay reachable while scrolling ── */
+.day-nav {
+  display: flex; align-items: center; gap: 7px; margin-bottom: 14px;
+  position: sticky; top: 0; z-index: 40;
+  padding: 8px 0;
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .day-nav { background: var(--ink); }
+}
 
 .nav-btn {
   background: var(--mid); border: 1px solid var(--rim); color: var(--text);
@@ -398,6 +407,36 @@ body::before {
 .feat-row:hover .feat-chev { color: var(--accent); opacity: 1; }
 .feat-row.open .feat-chev { transform: rotate(180deg); }
 
+/* ── Today's picks ── */
+.picks-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.pick-card {
+  background: var(--card); border: 1px solid var(--rim); border-radius: 10px;
+  padding: 10px 12px; cursor: pointer; min-width: 0;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+  box-shadow: var(--shadow-sm);
+}
+.pick-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.pick-rank {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  background: var(--mid); border: 1px solid var(--rim); color: var(--muted);
+  font-size: .6rem; font-weight: 700;
+}
+
+/* ── Filter chips ── */
+.chips-row { display: flex; gap: 7px; flex-wrap: wrap; margin: 8px 0 4px; }
+.chip {
+  background: var(--card); border: 1px solid var(--rim); color: var(--muted);
+  font-family: 'Spline Sans Mono', monospace; font-size: .62rem; letter-spacing: .04em;
+  padding: 7px 13px; border-radius: 999px; cursor: pointer; user-select: none;
+  transition: all .16s ease; min-height: 32px;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.active {
+  background: rgba(0,48,135,.08); border-color: var(--accent); color: var(--accent); font-weight: 600;
+}
+[data-theme="dark"] .chip.active { background: rgba(255,255,255,.10); }
+
 /* ── Site detail modal ── */
 #site-modal-overlay {
   display: none; position: fixed; inset: 0; z-index: 100;
@@ -523,6 +562,18 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 
   /* Offshore card: 2x2 on mobile */
   .offshore-metrics { grid-template-columns: repeat(2,1fr) !important; }
+
+  /* Today's picks: horizontal snap carousel */
+  .picks-row {
+    display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    margin: 0 -12px; padding: 0 12px 4px;
+  }
+  .picks-row::-webkit-scrollbar { display: none; }
+  .pick-card { flex: 0 0 72%; scroll-snap-align: start; }
+
+  /* Filter chips: bigger tap targets */
+  .chip { padding: 9px 15px; min-height: 38px; font-size: .66rem; }
 
   /* NCS section: hide verbose sub-text on mobile */
   .ncs-sub { display: none !important; }
@@ -2233,56 +2284,64 @@ const VIZ_SEASON = {
 }
 
 
+// ── Site list filters (persisted) ──
+const FILTERS={shore:false,solo:false,go:false};
+try{ Object.assign(FILTERS, JSON.parse(localStorage.getItem('dws-filters')||'{}')); }catch(e){}
+function toggleFilter(k){
+  FILTERS[k]=!FILTERS[k];
+  try{ localStorage.setItem('dws-filters', JSON.stringify(FILTERS)); }catch(e){}
+  render();
+}
+function passesFilters(e){
+  if(FILTERS.shore && e.site.entry!=='shore') return false;
+  if(FILTERS.solo  && !e.site.solo)           return false;
+  if(FILTERS.go    && e.r.verdict!=='GO')     return false;
+  return true;
+}
+function filterChipsHTML(){
+  const chip=(k,label,title)=>'<button class="chip'+(FILTERS[k]?' active':'')+'" onclick="toggleFilter(\''+k+'\')" title="'+title+'">'+label+'</button>';
+  return '<div class="chips-row">'+
+    chip('shore','🏖 Shore','Shore-entry sites only')+
+    chip('solo','🤿 Solo OK','Sites diveable solo')+
+    chip('go','✓ GO only','Only sites rated GO today')+
+  '</div>';
+}
+
 function renderSites(){
   const d=iso(winOffset-1);
   const ranked=rankSitesForDay(d);
-  // best-window is computed per site below — each region uses its own tide station
 
-  const FEATURED_IDS=[
-    'shelly-beach-manly',
-    'shark-point','gordons-bay',
-    'bare-island','inscription-point',
-    'bushrangers-bay'
-  ];
-  const FEATURED_LABELS={
-    'shelly-beach-manly':'N',
-    'shark-point':'E','gordons-bay':'E',
-    'bare-island':'S','inscription-point':'S',
-    'bushrangers-bay':'IL'
-  };
-
-  const featuredRanked=FEATURED_IDS.map(id=>{
-    const entry=ranked.find(x=>x.site.id===id);
-    if(entry) return entry;
-    const site=SITES.find(s=>s.id===id);
-    return site?{site,r:{verdict:'NO',reason:'No data'},dd:null}:null;
-  }).filter(Boolean);
-
-  const restRanked=ranked;
-
-  function compactRow({site,r,dd}){
-    const v=r.verdict;
-    const dotCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'rgba(255,68,68,.7)';
-    const textCol=v==='GO'?'var(--go)':v==='MAYBE'?'var(--maybe)':'var(--muted)';
-    const curMonth=new Date().getMonth();
-    const activeWildlife=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth));
-    const regionLabel=FEATURED_LABELS[site.id]||'';
-    return '<div class="feat-row" style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openSiteModal(\''+site.id+'\')">'+
-      '<div style="display:flex;align-items:center;gap:7px;padding:7px 0">'+
-        '<span style="width:7px;height:7px;border-radius:50%;background:'+dotCol+';flex-shrink:0"></span>'+
-        '<span style="font-size:.75rem;flex:1">'+site.name+'</span>'+
-        (activeWildlife.length?'<span style="font-size:.7rem;margin-right:2px">'+activeWildlife.map(w=>w.icon).join('')+'</span>':'')+
-        (regionLabel?'<span style="font-size:.55rem;color:var(--muted);background:rgba(255,255,255,.07);border-radius:3px;padding:1px 4px;margin-right:3px">'+regionLabel+'</span>':'')+
-        '<span style="font-size:.65rem;font-weight:600;color:'+textCol+'">'+v+'</span>'+
-        '<span class="feat-chev">›</span>'+
+  // ── Today's Picks: top 3 by conditions for the selected day (respects filters) ──
+  const picks=ranked.filter(e=>e.dd&&passesFilters(e)).slice(0,3);
+  const curMonth=new Date().getMonth();
+  function pickCard(e,i){
+    const {site,r,dd}=e;
+    const vCol=r.verdict==='GO'?'var(--go)':r.verdict==='MAYBE'?'var(--maybe)':'var(--no)';
+    const wl=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth)).map(w=>w.icon).join('');
+    const eff=r.eff?.swell!=null
+      ? '<span style="color:'+condColor(r.eff.swell,PREFS.maxSwell)+'">'+r.eff.swell.toFixed(2)+'m</span> / <span style="color:'+condColor(r.eff.wind,PREFS.maxWind)+'">'+r.eff.wind.toFixed(1)+'kt</span>'
+      : '—';
+    const win=bestDiveWindow(d, stationFor(site), dd, site).window;
+    return '<div class="pick-card" onclick="openSiteModal(\''+site.id+'\')" style="border-top:3px solid '+vCol+'">'+
+      '<div style="display:flex;align-items:center;gap:7px">'+
+        '<span class="pick-rank">'+(i+1)+'</span>'+
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+site.name+'</span>'+
+        '<span style="font-size:.62rem;font-weight:700;color:'+vCol+'">'+r.verdict+'</span>'+
       '</div>'+
+      '<div style="font-size:.64rem;margin-top:5px">'+eff+(wl?' <span style="font-size:.7rem">'+wl+'</span>':'')+'</div>'+
+      '<div style="font-size:.58rem;color:var(--muted);margin-top:3px">⏱ '+win+' · '+site.region+(site.entry==='boat'?' · boat':'')+'</div>'+
     '</div>';
   }
-
   document.getElementById('site-list-area').innerHTML=
-    '<div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px">Featured sites</div>'+
-    '<div style="font-size:.55rem;color:var(--muted);opacity:.6;margin-bottom:8px">N = north · E = eastern · S = south · IL = illawarra</div>'+
-    featuredRanked.map(compactRow).join('');
+    '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:7px">'+
+      '<span style="font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Today\'s picks — '+fmtDate(d)+'</span>'+
+      '<span style="font-size:.53rem;color:var(--muted);opacity:.6">ranked by conditions</span>'+
+    '</div>'+
+    (picks.length
+      ? '<div class="picks-row">'+picks.map(pickCard).join('')+'</div>'
+      : '<div style="font-size:.65rem;color:var(--muted);padding:8px 0">No sites match the current filters for this day.</div>');
+
+  const restRanked=ranked.filter(passesFilters);
 
   const REGION_NCS={'Sydney Harbour':'NB','Northern Beaches':'NB','Central Coast':'NB','Eastern Suburbs':'EB','Botany / South':'EB','Royal Nat Park':'SS','Kiama':'IL','Illawarra':'IL'};
   const NCS_META={
@@ -2336,8 +2395,13 @@ function renderSites(){
     const entries=ncsGrouped[key];
     if(!entries.length) return '';
     const cards=entries.map(buildSiteCard).join('');
-    const best=entries.some(e=>e.r.verdict==='GO')?'GO':entries.some(e=>e.r.verdict==='MAYBE')?'MAYBE':'NO';
-    const bc=best==='GO'?'var(--go)':best==='MAYBE'?'var(--maybe)':'rgba(255,68,68,.7)';
+    const nGo=entries.filter(e=>e.r.verdict==='GO').length;
+    const nMaybe=entries.filter(e=>e.r.verdict==='MAYBE').length;
+    const nNo=entries.length-nGo-nMaybe;
+    const counts=
+      (nGo?'<span style="color:var(--go);font-weight:700">'+nGo+' GO</span>':'')+
+      (nMaybe?(nGo?' <span style="opacity:.4">·</span> ':'')+'<span style="color:var(--maybe);font-weight:700">'+nMaybe+'</span><span style="color:var(--maybe);opacity:.8;font-size:.9em"> ?</span>':'')+
+      (nNo?((nGo||nMaybe)?' <span style="opacity:.4">·</span> ':'')+'<span style="color:var(--muted)">'+nNo+' NO</span>':'');
     const meta=NCS_META[key];
     const sid='ncs-'+key;
     return '<div style="margin-top:14px">'+
@@ -2345,14 +2409,14 @@ function renderSites(){
         '<span style="font-size:.65rem;font-weight:700;color:var(--accent);background:var(--mid);border:1px solid var(--rim);border-radius:3px;padding:1px 7px;flex-shrink:0">'+key+'</span>'+
         '<span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text);flex-shrink:0">'+meta.full+'</span>'+
         '<span class="ncs-sub" style="font-size:.54rem;color:var(--muted)">'+meta.sub+'</span>'+
-        '<span style="font-size:.58rem;color:var(--muted);margin-left:auto;flex-shrink:0">'+entries.length+' sites</span>'+
-        '<span style="font-size:.65rem;font-weight:700;color:'+bc+';margin-left:10px;flex-shrink:0">'+best+'</span>'+
+        '<span style="font-size:.62rem;margin-left:auto;flex-shrink:0;white-space:nowrap" title="'+nGo+' GO · '+nMaybe+' MAYBE · '+nNo+' NO">'+counts+'</span>'+
         '<span class="ncs-chev-'+key+'" style="font-size:.55rem;color:var(--muted);margin-left:7px;display:inline-block;transition:transform .25s;transform:rotate(-90deg)">▼</span>'+
       '</div>'+
       '<div id="'+sid+'" class="site-list" style="display:none;margin-top:8px">'+cards+'</div>'+
     '</div>';
   }
 
+  const anyFilter=FILTERS.shore||FILTERS.solo||FILTERS.go;
   document.getElementById('site-rest-area').innerHTML=
     '<div style="display:flex;align-items:center;margin-top:18px;margin-bottom:2px">'+
       '<div style="display:flex;align-items:baseline;gap:10px">'+
@@ -2360,6 +2424,8 @@ function renderSites(){
       '<span style="font-size:.55rem;color:var(--muted);letter-spacing:.06em">tap a region to expand</span>'+
     '</div>'+
     '</div>'+
+    filterChipsHTML()+
+    (anyFilter&&!restRanked.length?'<div style="font-size:.65rem;color:var(--muted);padding:10px 0">No sites match the current filters.</div>':'')+
     buildNCSSection('NB')+buildNCSSection('EB')+buildNCSSection('SS')+buildNCSSection('IL');
   reapplyOpenSites();
 }
