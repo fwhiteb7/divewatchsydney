@@ -1182,12 +1182,13 @@ function seasonalContext() {
 
 function wetsuitRec(temp){
   if(temp==null) return null;
-  if(temp>=22)   return { suit:'3mm / shorty', note:'🌊 warm — perfect', good:true };
-  if(temp>=19)   return { suit:'5mm',          note:'🌊 great temp',          good:true };
-  if(temp>=17)   return { suit:'5–7mm',   note:'cool but fine',                   good:true };
-  if(temp>=15)   return { suit:'7mm',          note:'cold',                            good:false };
-  if(temp>=13)   return { suit:'7mm + hood',   note:'very cold',                       good:false };
-  return          { suit:'7mm + hood',         note:'extreme cold',                    good:false };
+  if(temp>=22)   return { suit:'3mm / shorty',        note:'🌊 warm — perfect', good:true };
+  if(temp>=20)   return { suit:'5mm',                 note:'🌊 great temp',     good:true };
+  // Fred's rule: anything below 20°C is 7mm or drysuit territory
+  if(temp>=17)   return { suit:'7mm / drysuit',       note:'cool but fine',     good:true };
+  if(temp>=15)   return { suit:'7mm / drysuit',       note:'cold',              good:false };
+  if(temp>=13)   return { suit:'7mm + hood / drysuit',note:'very cold',         good:false };
+  return          { suit:'7mm + hood / drysuit',      note:'extreme cold',      good:false };
 }
 
 function updateNowStrip(){
