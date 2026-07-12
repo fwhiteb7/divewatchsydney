@@ -451,6 +451,14 @@ body::before {
 .chip.v-no.active    { color: var(--no);    border-color: var(--no);    background: var(--no-bg); }
 .chips-sep { width: 1px; align-self: stretch; background: var(--rim); margin: 2px 3px; }
 
+/* Offshore collapse is mobile-only: on desktop hide the toggle affordances and always show the body */
+.offshore-chev, .offshore-sum { display: none; }
+@media(min-width:561px){ .offshore-hdr { cursor: default !important; } }
+@media(max-width:560px){
+  .offshore-chev { display: inline-block; }
+  .offshore-wrap:not(.open) .offshore-sum { display: inline; }
+}
+
 /* ── Site detail modal ── */
 #site-modal-overlay {
   display: none; position: fixed; inset: 0; z-index: 100;
@@ -586,6 +594,11 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 
   /* Offshore card: 2x2 on mobile */
   .offshore-metrics { grid-template-columns: repeat(2,1fr) !important; }
+
+  /* Offshore card: header-only unless expanded (desktop always shows the body) */
+  .offshore-wrap:not(.open) .offshore-body { display: none; }
+  .offshore-wrap:not(.open) .offshore-hdr { border-bottom: none; }
+  .offshore-wrap.open .offshore-chev { transform: rotate(180deg); }
 
   /* Today's picks: horizontal snap carousel */
   .picks-row {
@@ -2192,6 +2205,15 @@ function renderVerdict(){
     '</div>'+(isPast?'</div>':'')+'';
 }
 
+// Offshore card: collapsed by default on phones (tap header to expand); always open on desktop via CSS
+let offshoreOpen=false;
+try{ offshoreOpen=localStorage.getItem('dws-offshore')==='open'; }catch(e){}
+function toggleOffshore(){
+  offshoreOpen=!offshoreOpen;
+  try{ localStorage.setItem('dws-offshore', offshoreOpen?'open':'closed'); }catch(e){}
+  renderOffshoreCard();
+}
+
 function renderOffshoreCard(){
   const d=iso(winOffset-1);
   // Raw offshore data — use Sydney Harbour zone as the representative offshore source
@@ -2239,12 +2261,16 @@ function renderOffshoreCard(){
       (sub?'<div style="font-size:.55rem;color:var(--muted);margin-top:2px">'+sub+'</div>':'')+
     '</div>';
 
+  const sumSwellCol=condColor(hd.swell,PREFS.maxSwell), sumWindCol=condColor(hd.wind,PREFS.maxWind);
   const card=
-    '<div style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)">'+
-      '<div class="offshore-hdr" style="background:var(--accent);color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">'+
+    '<div class="offshore-wrap'+(offshoreOpen?' open':'')+'" style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)">'+
+      '<div class="offshore-hdr" onclick="toggleOffshore()" style="background:var(--accent);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);cursor:pointer">'+
         '<span style="font-size:.57rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</span>'+
-        '<span style="font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
+        '<span class="offshore-sum" style="font-size:.62rem;font-weight:600"><span style="color:#fff;opacity:.9">'+hd.swell.toFixed(1)+'m · '+hd.wind.toFixed(0)+'kt'+(hd.temp?' · '+hd.temp.toFixed(0)+'°':'')+'</span></span>'+
+        '<span style="margin-left:auto;font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
+        '<span class="offshore-chev" style="font-size:.6rem;opacity:.8;transition:transform .2s">▾</span>'+
       '</div>'+
+      '<div class="offshore-body">'+
       '<div class="offshore-metrics" style="display:grid;grid-template-columns:repeat('+(hd.temp?4:3)+',1fr);gap:0;border-bottom:1px solid var(--border)">'+
         inlineMetric('Swell',swellBig+swellTrend,periodStr||'',false)+
         inlineMetric('Wind',windBig+windTrend,gustStr,false)+
@@ -2254,6 +2280,7 @@ function renderOffshoreCard(){
       ((tideNote||SUN[d])?'<div style="padding:5px 14px;font-size:.58rem;color:var(--muted);border-bottom:1px solid var(--border);text-align:center">'+tideNote+(SUN[d]?(tideNote?' · ':'')+'☀ '+SUN[d].rise+'–'+SUN[d].set:'')+'</div>':'')+
       '<div style="padding:10px 14px 10px">'+
         hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
+      '</div>'+
       '</div>'+
     '</div>';
 
