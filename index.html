@@ -449,13 +449,18 @@ body::before {
 .chip.v-go.active    { color: var(--go);    border-color: var(--go);    background: var(--go-bg); }
 .chip.v-maybe.active { color: var(--maybe); border-color: var(--maybe); background: var(--maybe-bg); }
 .chip.v-no.active    { color: var(--no);    border-color: var(--no);    background: var(--no-bg); }
-/* Offshore collapse is mobile-only: on desktop hide the toggle affordances and always show the body */
-.offshore-chev, .offshore-sum { display: none; }
-@media(min-width:561px){ .offshore-hdr { cursor: default !important; } }
-@media(max-width:560px){
-  .offshore-chev { display: inline-block; }
-  .offshore-wrap:not(.open) .offshore-sum { display: inline; }
+/* "Tap for details" affordance on site + pick cards */
+.details-pill {
+  display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  font-size: .56rem; letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px;
+  color: var(--accent); border: 1px solid rgba(0,48,135,.30);
+  background: rgba(0,48,135,.06); white-space: nowrap;
+  transition: all .15s ease;
 }
+[data-theme="dark"] .details-pill { border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.07); }
+.site-card:hover .details-pill, .pick-card:hover .details-pill { background: var(--accent); color: #fff; }
 
 /* ── Site detail modal ── */
 #site-modal-overlay {
@@ -592,11 +597,6 @@ hr.div { border: none; border-top: 1px solid var(--rim); margin: 24px 0; opacity
 
   /* Offshore card: 2x2 on mobile */
   .offshore-metrics { grid-template-columns: repeat(2,1fr) !important; }
-
-  /* Offshore card: header-only unless expanded (desktop always shows the body) */
-  .offshore-wrap:not(.open) .offshore-body { display: none; }
-  .offshore-wrap:not(.open) .offshore-hdr { border-bottom: none; }
-  .offshore-wrap.open .offshore-chev { transform: rotate(180deg); }
 
   /* Today's picks: horizontal snap carousel */
   .picks-row {
@@ -1974,18 +1974,77 @@ function renderSiteModal(){
 
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSiteModal(); });
 
-// ── Share a site's conditions (iPhone share sheet, clipboard fallback) ──
+// ── Share a site's conditions as a PNG card (iPhone share sheet; text fallback) ──
+const shareVCol=v=>v==='GO'?'#22c55e':v==='MAYBE'?'#f59e0b':'#ef4444';
+const shareCCol=(v,l)=>v<=l*0.60?'#22c55e':v<=l*0.85?'#e8edf2':v<=l?'#f59e0b':'#ef4444';
+
+async function buildShareCard(site,r,dd,d,win){
+  try{
+    if(typeof document.fonts?.ready?.then==='function') await document.fonts.ready;
+    const W=1000,H=640;
+    const c=document.createElement('canvas'); c.width=W; c.height=H;
+    const x=c.getContext&&c.getContext('2d'); if(!x) return null;
+    const BC='"Barlow Condensed", sans-serif';
+    x.fillStyle='#0b0d11'; x.fillRect(0,0,W,H);
+    // header band
+    x.fillStyle='#003087'; x.fillRect(0,0,W,86);
+    x.textBaseline='middle';
+    x.fillStyle='#fff'; x.font='900 46px '+BC; x.fillText('DIVEWATCH',36,46);
+    const w1=x.measureText('DIVEWATCH').width;
+    x.fillStyle='rgba(255,255,255,.55)'; x.font='300 46px '+BC; x.fillText('SYDNEY',36+w1+6,46);
+    x.textAlign='right'; x.font='600 28px '+BC; x.fillStyle='rgba(255,255,255,.9)';
+    x.fillText(fmtDate(d).toUpperCase(),W-36,46); x.textAlign='left';
+    // verdict + site
+    x.font='900 100px '+BC; x.fillStyle=shareVCol(r.verdict); x.fillText(r.verdict,36,168);
+    x.font='700 54px '+BC; x.fillStyle='#f2f5f8'; x.fillText(site.name,36,252);
+    x.font='400 27px '+BC; x.fillStyle='rgba(255,255,255,.55)';
+    x.fillText(site.region+' · depth '+site.depthMin+'–'+site.depthMax+'m · '+site.entry+' entry'+(site.buddyOnly?' · BUDDY REQUIRED':''),36,294);
+    x.fillStyle='rgba(255,255,255,.12)'; x.fillRect(36,330,W-72,2);
+    // metric cells
+    const es=r.eff?.swell??dd?.swell, ew=r.eff?.wind??dd?.wind;
+    const cells=[
+      ['SWELL', es!=null?es.toFixed(2)+'m':'—', es!=null?shareCCol(es,PREFS.maxSwell):'#888', dd?.period!=null?dd.period.toFixed(0)+'s period'+(dd.swellDir!=null?' '+deg2cp(dd.swellDir):''):''],
+      ['WIND', ew!=null?ew.toFixed(1)+'kt':'—', ew!=null?shareCCol(ew,PREFS.maxWind):'#888', dd?.windDir!=null?deg2cp(dd.windDir)||'':''],
+      ['WATER', dd?.temp!=null?dd.temp.toFixed(1)+'°C':'—', '#e8edf2', dd?.temp!=null?(wetsuitRec(dd.temp)?.suit||''):''],
+      ['BEST WINDOW', win.replace('🌙','').trim(), '#7eb8ff', SUN[d]?'☀ '+SUN[d].rise+'–'+SUN[d].set:''],
+    ];
+    const cw=(W-72)/4;
+    cells.forEach((cell,i)=>{
+      const cx0=36+i*cw;
+      x.font='600 23px '+BC; x.fillStyle='rgba(255,255,255,.45)'; x.fillText(cell[0],cx0,382);
+      x.font='700 42px '+BC; x.fillStyle=cell[2]; x.fillText(cell[1],cx0,432);
+      if(cell[3]){ x.font='400 23px '+BC; x.fillStyle='rgba(255,255,255,.45)'; x.fillText(cell[3],cx0,470); }
+    });
+    // wildlife + tide advice
+    const curMonth=new Date().getMonth();
+    const wl=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth)).map(w=>w.icon+' '+w.label).join('   ');
+    if(wl){ x.font='400 26px sans-serif'; x.fillStyle='rgba(255,255,255,.75)'; x.fillText(wl.slice(0,86),36,528); }
+    if(site.tideAdvice){ x.font='400 24px '+BC; x.fillStyle='rgba(126,184,255,.85)'; x.fillText('🌊 '+site.tideAdvice.slice(0,88),36,568); }
+    x.fillStyle='rgba(255,255,255,.35)'; x.font='400 20px '+BC;
+    x.fillText('DIVEWATCHSYDNEY · Open-Meteo · BoM tides · McFadyen field notes · automated estimate — check conditions on the day',36,H-24);
+    const blob=await new Promise(res=>c.toBlob?c.toBlob(res,'image/png'):res(null));
+    if(!blob) return null;
+    return new File([blob],'divewatch-'+site.id+'-'+d+'.png',{type:'image/png'});
+  }catch(e){ return null; }
+}
+
 async function shareSite(sid){
   const site=SITES.find(s=>s.id===sid); if(!site) return;
   const d=iso(winOffset-1);
   const dd=WX[site.region]?.days?.find(x=>x.date===d);
   const r=assess(site,dd,PREFS);
   const win=bestDiveWindow(d,stationFor(site),dd,site).window;
-  const eff=r.eff?.swell!=null?r.eff.swell.toFixed(2)+'m / '+r.eff.wind.toFixed(1)+'kt':'';
-  const text='🤿 '+site.name+' — '+fmtDate(d)+': '+r.verdict+(eff?' · '+eff:'')+
-    (dd?.temp?' · '+dd.temp.toFixed(1)+'°C':'')+' · window '+win+
-    '\nhttps://www.google.com/maps?q='+site.lat+','+site.lng;
   try{
+    // Preferred: share a rendered PNG card
+    const img=await buildShareCard(site,r,dd,d,win);
+    if(img&&typeof navigator!=='undefined'&&navigator.canShare&&navigator.canShare({files:[img]})){
+      await navigator.share({files:[img]});
+      return;
+    }
+    // Fallback: plain text
+    const eff=r.eff?.swell!=null?r.eff.swell.toFixed(2)+'m / '+r.eff.wind.toFixed(1)+'kt':'';
+    const text='🤿 '+site.name+' — '+fmtDate(d)+': '+r.verdict+(eff?' · '+eff:'')+
+      (dd?.temp?' · '+dd.temp.toFixed(1)+'°C':'')+' · window '+win;
     if(typeof navigator!=='undefined'&&navigator.share){ await navigator.share({text}); }
     else if(typeof navigator!=='undefined'&&navigator.clipboard){
       await navigator.clipboard.writeText(text);
@@ -2203,15 +2262,6 @@ function renderVerdict(){
     '</div>'+(isPast?'</div>':'')+'';
 }
 
-// Offshore card: collapsed by default on phones (tap header to expand); always open on desktop via CSS
-let offshoreOpen=false;
-try{ offshoreOpen=localStorage.getItem('dws-offshore')==='open'; }catch(e){}
-function toggleOffshore(){
-  offshoreOpen=!offshoreOpen;
-  try{ localStorage.setItem('dws-offshore', offshoreOpen?'open':'closed'); }catch(e){}
-  renderOffshoreCard();
-}
-
 function renderOffshoreCard(){
   const d=iso(winOffset-1);
   // Raw offshore data — use Sydney Harbour zone as the representative offshore source
@@ -2259,16 +2309,12 @@ function renderOffshoreCard(){
       (sub?'<div style="font-size:.55rem;color:var(--muted);margin-top:2px">'+sub+'</div>':'')+
     '</div>';
 
-  const sumSwellCol=condColor(hd.swell,PREFS.maxSwell), sumWindCol=condColor(hd.wind,PREFS.maxWind);
   const card=
-    '<div class="offshore-wrap'+(offshoreOpen?' open':'')+'" style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)">'+
-      '<div class="offshore-hdr" onclick="toggleOffshore()" style="background:var(--accent);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);cursor:pointer">'+
+    '<div style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)">'+
+      '<div class="offshore-hdr" style="background:var(--accent);color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">'+
         '<span style="font-size:.57rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase">Sydney Offshore</span>'+
-        '<span class="offshore-sum" style="font-size:.62rem;font-weight:600"><span style="color:#fff;opacity:.9">'+hd.swell.toFixed(1)+'m · '+hd.wind.toFixed(0)+'kt'+(hd.temp?' · '+hd.temp.toFixed(0)+'°':'')+'</span></span>'+
-        '<span style="margin-left:auto;font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
-        '<span class="offshore-chev" style="font-size:.6rem;opacity:.8;transition:transform .2s">▾</span>'+
+        '<span style="font-size:.75rem;font-weight:700;letter-spacing:.04em">'+diveWindow+'<span style="font-size:.55rem;font-weight:400;opacity:.75;margin-left:5px">best window</span></span>'+
       '</div>'+
-      '<div class="offshore-body">'+
       '<div class="offshore-metrics" style="display:grid;grid-template-columns:repeat('+(hd.temp?4:3)+',1fr);gap:0;border-bottom:1px solid var(--border)">'+
         inlineMetric('Swell',swellBig+swellTrend,periodStr||'',false)+
         inlineMetric('Wind',windBig+windTrend,gustStr,false)+
@@ -2278,7 +2324,6 @@ function renderOffshoreCard(){
       ((tideNote||SUN[d])?'<div style="padding:5px 14px;font-size:.58rem;color:var(--muted);border-bottom:1px solid var(--border);text-align:center">'+tideNote+(SUN[d]?(tideNote?' · ':'')+'☀ '+SUN[d].rise+'–'+SUN[d].set:'')+'</div>':'')+
       '<div style="padding:10px 14px 10px">'+
         hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
-      '</div>'+
       '</div>'+
     '</div>';
 
@@ -2457,7 +2502,10 @@ function renderSites(){
         '<span style="font-size:.62rem;font-weight:700;color:'+vCol+'">'+r.verdict+'</span>'+
       '</div>'+
       '<div style="font-size:.64rem;margin-top:5px">'+eff+(wl?' <span style="font-size:.7rem">'+wl+'</span>':'')+'</div>'+
-      '<div style="font-size:.58rem;color:var(--muted);margin-top:3px">⏱ '+win+' · '+site.region+(site.entry==='boat'?' · boat':'')+'</div>'+
+      '<div style="font-size:.58rem;color:var(--muted);margin-top:5px;display:flex;align-items:center;justify-content:space-between;gap:6px">'+
+        '<span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">⏱ '+win+' · '+site.region+(site.entry==='boat'?' · boat':'')+'</span>'+
+        '<span class="details-pill">ⓘ info ›</span>'+
+      '</div>'+
     '</div>';
   }
   document.getElementById('site-list-area').innerHTML=
@@ -2512,7 +2560,7 @@ function renderSites(){
           '</div>'+
           '<div class="card-cond">'+condLine+(condLine2?'<br>'+condLine2:'')+
           '</div>'+
-          '<span class="feat-chev" style="align-self:center">›</span>'+
+          '<span class="details-pill" style="align-self:center">ⓘ info ›</span>'+
         '</div>'+
       '</div>'
     );
