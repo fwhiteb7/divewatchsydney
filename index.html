@@ -1978,10 +1978,24 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSiteModal(); 
 const shareVCol=v=>v==='GO'?'#22c55e':v==='MAYBE'?'#f59e0b':'#ef4444';
 const shareCCol=(v,l)=>v<=l*0.60?'#22c55e':v<=l*0.85?'#e8edf2':v<=l?'#f59e0b':'#ef4444';
 
+function svgToImage(svgStr){
+  return new Promise(res=>{
+    try{
+      const blob=new Blob([svgStr],{type:'image/svg+xml'});
+      const url=URL.createObjectURL(blob);
+      const img=new Image();
+      img.onload=()=>{ res(img); URL.revokeObjectURL(url); };
+      img.onerror=()=>{ res(null); URL.revokeObjectURL(url); };
+      img.src=url;
+    }catch(e){ res(null); }
+  });
+}
+
 async function buildShareCard(site,r,dd,d,win){
   try{
     if(typeof document.fonts?.ready?.then==='function') await document.fonts.ready;
-    const W=1000,H=640;
+    const hasChart=!!(dd?.hours&&dd.hours.length);
+    const W=1000,H=hasChart?880:640;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
     const x=c.getContext&&c.getContext('2d'); if(!x) return null;
     const BC='"Barlow Condensed", sans-serif';
@@ -2015,11 +2029,37 @@ async function buildShareCard(site,r,dd,d,win){
       x.font='700 42px '+BC; x.fillStyle=cell[2]; x.fillText(cell[1],cx0,432);
       if(cell[3]){ x.font='400 23px '+BC; x.fillStyle='rgba(255,255,255,.45)'; x.fillText(cell[3],cx0,470); }
     });
+    // hourly forecast chart — same SVG the popup uses, rasterized
+    let yAfter=488;
+    if(hasChart){
+      const chartHtml=siteScoreChart(site,dd,d,win);
+      const m=chartHtml.match(/<svg[\s\S]*?<\/svg>/);
+      if(m){
+        const svg=m[0]
+          .replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ')
+          .replace('width="100%"','width="1040" height="198"')
+          .replace(/var\(--border\)/g,'rgba(255,255,255,.15)')
+          .replace(/var\(--rim\)/g,'rgba(255,255,255,.15)')
+          .replace(/var\(--muted\)/g,'#8a9aaa')
+          .replace(/var\(--go\)/g,'#22c55e')
+          .replace(/var\(--maybe\)/g,'#f59e0b')
+          .replace(/var\(--no\)/g,'#ef4444')
+          .replace(/var\(--text\)/g,'#e8edf2')
+          .replace(/var\(--accent\)/g,'#7eb8ff');
+        const img=await svgToImage(svg);
+        if(img){
+          x.font='600 23px '+BC; x.fillStyle='rgba(255,255,255,.45)';
+          x.fillText('HOURLY FORECAST — QUALITY · SWELL · TIDE',36,520);
+          x.drawImage(img,36,540,928,176);
+          yAfter=746;
+        }
+      }
+    }
     // wildlife + tide advice
     const curMonth=new Date().getMonth();
     const wl=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth)).map(w=>w.icon+' '+w.label).join('   ');
-    if(wl){ x.font='400 26px sans-serif'; x.fillStyle='rgba(255,255,255,.75)'; x.fillText(wl.slice(0,86),36,528); }
-    if(site.tideAdvice){ x.font='400 24px '+BC; x.fillStyle='rgba(126,184,255,.85)'; x.fillText('🌊 '+site.tideAdvice.slice(0,88),36,568); }
+    if(wl){ x.font='400 26px sans-serif'; x.fillStyle='rgba(255,255,255,.75)'; x.fillText(wl.slice(0,86),36,yAfter+30); }
+    if(site.tideAdvice){ x.font='400 24px '+BC; x.fillStyle='rgba(126,184,255,.85)'; x.fillText('🌊 '+site.tideAdvice.slice(0,88),36,yAfter+68); }
     x.fillStyle='rgba(255,255,255,.35)'; x.font='400 20px '+BC;
     x.fillText('DIVEWATCHSYDNEY · Open-Meteo · BoM tides · McFadyen field notes · automated estimate — check conditions on the day',36,H-24);
     const blob=await new Promise(res=>c.toBlob?c.toBlob(res,'image/png'):res(null));
