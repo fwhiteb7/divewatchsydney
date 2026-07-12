@@ -1412,6 +1412,9 @@ function bestDiveWindow(dateKey, station='fort-denison', dd=null, site=null){
   const fmt = dt => dt.toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney',hour:'numeric',minute:'2-digit',hour12:true})
                       .replace(':00','').toLowerCase().replace(' ','');
   const fmtH = h => { const d=new Date(2000,0,1,Math.floor(h),(h%1)*60|0); return fmt(d); };
+  // Daylight clamp: don't suggest windows before first light (~30 min pre-sunrise)
+  const sun=SUN[dateKey];
+  const minStart=sun?Math.max(6,sun.riseH-0.5):6;
 
   // ── Tide note (always built if data exists) ──
   const exs = TIDES[station]?.[dateKey];
@@ -1477,8 +1480,8 @@ function bestDiveWindow(dateKey, station='fort-denison', dd=null, site=null){
     // Flat day after shelter applied: conditions uniform — use tide preference + morning default
     const conditionsFlat=(swellMax-swellMin)<0.15&&(windMax-windMin)<4;
     if(conditionsFlat){
-      const morningStart=(tidePreferHour!=null&&tidePreferHour>=6&&tidePreferHour<=10)
-        ? Math.max(6, Math.floor(tidePreferHour-0.5)) : 7;
+      const morningStart=Math.max(minStart, (tidePreferHour!=null&&tidePreferHour>=6&&tidePreferHour<=10)
+        ? Math.floor(tidePreferHour-0.5) : 7);
       return {window:fmtH(morningStart)+'–'+fmtH(morningStart+2), tideNote};
     }
     // Score per hour using effective (site-shielded) values
@@ -1491,18 +1494,20 @@ function bestDiveWindow(dateKey, station='fort-denison', dd=null, site=null){
     // Sliding 2-hour window average over site-effective hours
     let bestScore=Infinity, bestStartHour=7;
     for(let i=0;i<effHours.length-1;i++){
+      if(effHours[i].hour<minStart-0.01) continue;  // skip pre-dawn windows
       const avg=(score(effHours[i])+score(effHours[i+1]))/2;
       if(avg<bestScore){bestScore=avg;bestStartHour=effHours[i].hour;}
     }
+    bestStartHour=Math.max(minStart,bestStartHour);
     return {window:fmtH(bestStartHour)+'–'+fmtH(bestStartHour+2), tideNote};
   }
 
   // ── Pure tide fallback (no hourly data) ──
   if(tidePreferHour!=null){
-    const startH=Math.max(6, tidePreferHour-1.5);
+    const startH=Math.max(minStart, tidePreferHour-1.5);
     return {window:fmtH(startH)+'–'+fmtH(startH+2.5), tideNote};
   }
-  return {window:'7–9am', tideNote};
+  return {window:fmtH(Math.max(7,minStart))+'–'+fmtH(Math.max(7,minStart)+2), tideNote};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1816,10 +1821,12 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
   `</div>`;
 }
 
+let SUN={};  // { 'YYYY-MM-DD': {rise:'07:00', set:'17:01', riseH, setH} }
+
 async function fetchRain(){
   try{
-    const start=iso(-4), end=iso(2); // past 4 days + next 2 days forecast
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=-33.87&longitude=151.21&daily=precipitation_sum&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end);
+    const start=iso(-4), end=iso(DAYS-1); // past 4 days rain + sun times for the whole week
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=-33.87&longitude=151.21&daily=precipitation_sum,sunrise,sunset&timezone=Australia%2FSydney&start_date='+start+'&end_date='+end);
     const d=await r.json();
     const sums=d.daily?.precipitation_sum||[];
     const dates=d.daily?.time||[];
@@ -1828,6 +1835,16 @@ async function fetchRain(){
     RAIN_TOTAL=sums.slice(0,4).reduce((a,b)=>a+(b||0),0);
     // Forecast: today + tomorrow
     RAIN_FORECAST=sums.filter((_,i)=>dates[i]>=todayStr).slice(0,2).reduce((a,b)=>a+(b||0),0);
+    // Sunrise/sunset (local ISO strings from the API)
+    SUN={};
+    dates.forEach((dt,i)=>{
+      const sr=d.daily?.sunrise?.[i], ss=d.daily?.sunset?.[i];
+      if(sr&&ss){
+        SUN[dt]={ rise:sr.slice(11,16), set:ss.slice(11,16),
+                  riseH:+sr.slice(11,13)+(+sr.slice(14,16))/60,
+                  setH:+ss.slice(11,13)+(+ss.slice(14,16))/60 };
+      }
+    });
   }catch(e){ RAIN_TOTAL=null; RAIN_FORECAST=null; }
 }
 
@@ -1936,6 +1953,42 @@ function renderSiteModal(){
 
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSiteModal(); });
 
+// ── Share a site's conditions (iPhone share sheet, clipboard fallback) ──
+async function shareSite(sid){
+  const site=SITES.find(s=>s.id===sid); if(!site) return;
+  const d=iso(winOffset-1);
+  const dd=WX[site.region]?.days?.find(x=>x.date===d);
+  const r=assess(site,dd,PREFS);
+  const win=bestDiveWindow(d,stationFor(site),dd,site).window;
+  const eff=r.eff?.swell!=null?r.eff.swell.toFixed(2)+'m / '+r.eff.wind.toFixed(1)+'kt':'';
+  const text='🤿 '+site.name+' — '+fmtDate(d)+': '+r.verdict+(eff?' · '+eff:'')+
+    (dd?.temp?' · '+dd.temp.toFixed(1)+'°C':'')+' · window '+win+
+    '\nhttps://www.google.com/maps?q='+site.lat+','+site.lng;
+  try{
+    if(typeof navigator!=='undefined'&&navigator.share){ await navigator.share({text}); }
+    else if(typeof navigator!=='undefined'&&navigator.clipboard){
+      await navigator.clipboard.writeText(text);
+      const b=document.getElementById('share-btn');
+      if(b){ const old=b.textContent; b.textContent='✓ copied'; setTimeout(()=>{b.textContent=old;},1400); }
+    }
+  }catch(e){} // user cancelled the share sheet — fine
+}
+
+// ── Swipe left/right anywhere to change day (mobile) ──
+let _swX=null,_swY=null;
+document.addEventListener('touchstart',e=>{ const t=e.touches[0]; _swX=t.clientX; _swY=t.clientY; },{passive:true});
+document.addEventListener('touchend',e=>{
+  if(_swX==null) return;
+  const t=e.changedTouches[0];
+  const dx=t.clientX-_swX, dy=t.clientY-_swY;
+  _swX=null;
+  if(Math.abs(dx)<60||Math.abs(dy)>50) return;          // not a deliberate horizontal swipe
+  if(modalSiteId) return;                                // don't fight the modal
+  if(e.target.closest&&e.target.closest('.picks-row,.day-tabs,svg')) return; // horizontal-scroll areas
+  const n=winOffset+(dx<0?1:-1);
+  if(n>=0&&n<DAYS){ winOffset=n; render(); }
+},{passive:true});
+
 // Full site detail — shown inside the modal
 function buildSiteDetailHTML(site,r,dd,d){
   const {window:diveWindow, tideNote}=bestDiveWindow(d, stationFor(site), dd, site);
@@ -1976,7 +2029,8 @@ function buildSiteDetailHTML(site,r,dd,d){
   return (
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-right:32px;margin-bottom:10px">'+
       '<div style="min-width:0">'+
-        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1.4rem;letter-spacing:.03em;line-height:1.1">'+site.name+' <a href="https://www.google.com/maps?q='+site.lat+','+site.lng+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;font-size:.56rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:10px;background:rgba(90,122,154,.12);border:1px solid rgba(90,122,154,.30);color:var(--muted);text-decoration:none;vertical-align:middle;margin-left:3px" title="'+site.lat.toFixed(4)+', '+site.lng.toFixed(4)+'">📍 map</a></div>'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1.4rem;letter-spacing:.03em;line-height:1.1">'+site.name+' <a href="https://www.google.com/maps?q='+site.lat+','+site.lng+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;font-size:.56rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:10px;background:rgba(90,122,154,.12);border:1px solid rgba(90,122,154,.30);color:var(--muted);text-decoration:none;vertical-align:middle;margin-left:3px" title="'+site.lat.toFixed(4)+', '+site.lng.toFixed(4)+'">📍 map</a>'+
+        '<button id="share-btn" onclick="shareSite(\''+site.id+'\')" style="display:inline-flex;align-items:center;gap:3px;font-size:.56rem;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:10px;background:rgba(90,122,154,.12);border:1px solid rgba(90,122,154,.30);color:var(--muted);cursor:pointer;vertical-align:middle;margin-left:3px">📤 share</button></div>'+
         '<div style="font-size:.64rem;color:var(--muted);margin-top:4px">'+site.region+' · '+fmtDate(d)+' · '+tags.join('')+'</div>'+
         (activeWildlife.length?'<div style="margin-top:5px">'+activeWildlife.map(w=>'<span class="wildlife-badge">'+w.icon+' '+w.label+'</span>').join('')+'</div>':'')+
       '</div>'+
@@ -1986,6 +2040,22 @@ function buildSiteDetailHTML(site,r,dd,d){
         (tempLine?'<div style="font-size:.64rem;margin-top:2px">'+tempLine+'</div>':'')+
       '</div>'+
     '</div>'+
+    // Week-ahead strip: this site's verdict for each day; tap a dot to jump
+    (()=>{
+      let dots='';
+      for(let i=1;i<DAYS;i++){
+        const dk=iso(i-1);
+        const dd2=WX[site.region]?.days?.find(x=>x.date===dk);
+        const r2=assess(site,dd2,PREFS);
+        const c=r2.verdict==='GO'?'var(--go)':r2.verdict==='MAYBE'?'var(--maybe)':r2.verdict==='NO'?'var(--no)':'var(--rim)';
+        const cur=dk===d;
+        dots+='<div onclick="winOffset='+i+';render()" title="'+fmtDate(dk)+': '+r2.verdict+'" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:3px 5px;border-radius:6px;'+(cur?'background:var(--mid);':'')+'">'+
+          '<span style="width:10px;height:10px;border-radius:50%;background:'+c+';'+(cur?'box-shadow:0 0 0 2px var(--accent);':'')+'"></span>'+
+          '<span style="font-size:.5rem;color:var(--muted);letter-spacing:.03em">'+dayLabel(dk)+'</span>'+
+        '</div>';
+      }
+      return '<div style="display:flex;gap:2px;margin:0 0 10px;align-items:center">'+dots+'<span style="font-size:.5rem;color:var(--muted);opacity:.6;margin-left:6px">week ahead — tap to jump</span></div>';
+    })()+
     '<div class="card-body">'+
       bodyEffLine+
       '<strong>'+r.verdict+'</strong> — '+r.reason+'<br>'+
@@ -1994,6 +2064,7 @@ function buildSiteDetailHTML(site,r,dd,d){
       shelterLine+
       '<div style="border-top:1px solid var(--border);margin:10px 0 8px">'+
       '<div style="font-size:.65rem;color:var(--accent)">⏱ Best window: <strong>'+diveWindow+'</strong>'+(tideNote?' <span style="color:var(--muted);font-size:.6rem">· '+tideNote+'</span>':'')+'</div>'+
+      (SUN[d]?'<div style="font-size:.6rem;color:var(--muted);margin-top:2px">☀ first light ~'+(m=>String(Math.floor(m/60))+':'+String(m%60).padStart(2,'0'))(Math.round((SUN[d].riseH-0.5)*60))+'am · sunrise '+SUN[d].rise+' · sunset '+SUN[d].set+'</div>':'')+
       (site.tideAdvice?'<div class="tide-advice">🌊 Tide: '+site.tideAdvice+'</div>':'')+
       '</div>'+
       '<div style="border-top:1px solid var(--border);padding-top:8px">'+
@@ -2170,7 +2241,7 @@ function renderOffshoreCard(){
         (hd.temp?inlineMetric('Water',waterBig,tempDiffStr,false):'')+
         inlineMetric('Viz',vizBig,'',true)+
       '</div>'+
-      (tideNote?'<div style="padding:5px 14px;font-size:.58rem;color:var(--muted);border-bottom:1px solid var(--border);text-align:center">'+tideNote+'</div>':'')+
+      ((tideNote||SUN[d])?'<div style="padding:5px 14px;font-size:.58rem;color:var(--muted);border-bottom:1px solid var(--border);text-align:center">'+tideNote+(SUN[d]?(tideNote?' · ':'')+'☀ '+SUN[d].rise+'–'+SUN[d].set:'')+'</div>':'')+
       '<div style="padding:10px 14px 4px">'+
         hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
       '</div>'+
