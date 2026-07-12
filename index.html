@@ -465,7 +465,17 @@ body::before {
 #site-modal .card-body { display: block; border-top: none; padding: 0; }
 @media(max-width:560px){
   #site-modal-overlay { padding: 0; align-items: flex-end; }
-  #site-modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 88vh; animation: sheetIn .25s ease; }
+  /* Fixed-height sheet: every site opens at the same size, content scrolls inside */
+  #site-modal {
+    max-width: none; border-radius: 16px 16px 0 0;
+    height: 82vh; height: 82dvh; max-height: none;
+    animation: sheetIn .25s ease;
+    padding-top: 24px;
+  }
+  #site-modal::before {
+    content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 4px; border-radius: 2px; background: var(--rim);
+  }
 }
 @keyframes sheetIn { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
 
