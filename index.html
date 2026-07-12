@@ -1995,7 +1995,7 @@ async function buildShareCard(site,r,dd,d,win){
   try{
     if(typeof document.fonts?.ready?.then==='function') await document.fonts.ready;
     const hasChart=!!(dd?.hours&&dd.hours.length);
-    const W=1000,H=hasChart?880:640;
+    const W=1000,H=hasChart?910:660;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
     const x=c.getContext&&c.getContext('2d'); if(!x) return null;
     const BC='"Barlow Condensed", sans-serif';
@@ -2055,11 +2055,30 @@ async function buildShareCard(site,r,dd,d,win){
         }
       }
     }
-    // wildlife + tide advice
-    const curMonth=new Date().getMonth();
-    const wl=(site.seasonalWildlife||[]).filter(w=>w.months.includes(curMonth)).map(w=>w.icon+' '+w.label).join('   ');
-    if(wl){ x.font='400 26px sans-serif'; x.fillStyle='rgba(255,255,255,.75)'; x.fillText(wl.slice(0,86),36,yAfter+30); }
-    if(site.tideAdvice){ x.font='400 24px '+BC; x.fillStyle='rgba(126,184,255,.85)'; x.fillText('🌊 '+site.tideAdvice.slice(0,88),36,yAfter+68); }
+    // tide advice (wrapped, max 2 lines) + tide times + surge — the stuff a buddy actually needs
+    const wrap=(txt,maxW,font)=>{
+      x.font=font;
+      const words=txt.split(' '), lines=[]; let cur='';
+      for(const w of words){
+        const t=cur?cur+' '+w:w;
+        if(x.measureText(t).width>maxW&&cur){ lines.push(cur); cur=w; } else cur=t;
+      }
+      if(cur) lines.push(cur);
+      return lines.slice(0,2);
+    };
+    let ly=yAfter+28;
+    if(site.tideAdvice){
+      x.fillStyle='rgba(126,184,255,.85)';
+      wrap('🌊 '+site.tideAdvice, W-72, '400 24px '+BC).forEach(l=>{ x.fillText(l,36,ly); ly+=30; });
+    }
+    const {tideNote}=bestDiveWindow(d,stationFor(site),dd,site);
+    const bits=[];
+    if(tideNote) bits.push(tideNote);
+    if(dd?.period!=null&&site.depthMax!=null){
+      const sd=Math.round(dd.period*dd.period/4);
+      bits.push(sd>=site.depthMax?'⚠ surge throughout dive':'surge-free below '+sd+'m');
+    }
+    if(bits.length){ x.font='400 23px '+BC; x.fillStyle='rgba(255,255,255,.60)'; x.fillText(bits.join('  ·  '),36,ly+2); }
     x.fillStyle='rgba(255,255,255,.35)'; x.font='400 20px '+BC;
     x.fillText('DIVEWATCHSYDNEY · Open-Meteo · BoM tides · McFadyen field notes · automated estimate — check conditions on the day',36,H-24);
     const blob=await new Promise(res=>c.toBlob?c.toBlob(res,'image/png'):res(null));
