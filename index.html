@@ -449,8 +449,6 @@ body::before {
 .chip.v-go.active    { color: var(--go);    border-color: var(--go);    background: var(--go-bg); }
 .chip.v-maybe.active { color: var(--maybe); border-color: var(--maybe); background: var(--maybe-bg); }
 .chip.v-no.active    { color: var(--no);    border-color: var(--no);    background: var(--no-bg); }
-.chips-sep { width: 1px; align-self: stretch; background: var(--rim); margin: 2px 3px; }
-
 /* Offshore collapse is mobile-only: on desktop hide the toggle affordances and always show the body */
 .offshore-chev, .offshore-sum { display: none; }
 @media(min-width:561px){ .offshore-hdr { cursor: default !important; } }
@@ -2409,7 +2407,7 @@ const VIZ_SEASON = {
 
 // ── Site list filters (persisted) ──
 const REGION_NCS={'Sydney Harbour':'NB','Northern Beaches':'NB','Central Coast':'NB','Eastern Suburbs':'EB','Botany / South':'EB','Royal Nat Park':'SS','Kiama':'IL','Illawarra':'IL'};
-const FILTERS={vGo:false,vMaybe:false,vNo:false,rNB:false,rEB:false,rSS:false,rIL:false};
+const FILTERS={vGo:false,vMaybe:false,vNo:false};
 try{
   const saved=JSON.parse(localStorage.getItem('dws-filters')||'{}');
   for(const k of Object.keys(FILTERS)) if(saved[k]!=null) FILTERS[k]=saved[k];
@@ -2426,11 +2424,6 @@ function passesFilters(e){
     const v=e.r.verdict;
     if(!((FILTERS.vGo&&v==='GO')||(FILTERS.vMaybe&&v==='MAYBE')||(FILTERS.vNo&&v==='NO'))) return false;
   }
-  // Region chips: if any are on, the site's area must match one of them
-  if(FILTERS.rNB||FILTERS.rEB||FILTERS.rSS||FILTERS.rIL){
-    const g=REGION_NCS[e.site.region]||'SS';
-    if(!FILTERS['r'+g]) return false;
-  }
   return true;
 }
 function filterChipsHTML(){
@@ -2439,11 +2432,6 @@ function filterChipsHTML(){
     chip('vGo','✓ GO','Sites rated GO today','v-go')+
     chip('vMaybe','? MAYBE','Sites rated MAYBE today','v-maybe')+
     chip('vNo','✕ NO','Sites rated NO today','v-no')+
-    '<span class="chips-sep"></span>'+
-    chip('rNB','NB','Northern Beaches & Sydney Harbour')+
-    chip('rEB','EB','Eastern Suburbs & Botany Bay')+
-    chip('rSS','SS','Southern Sydney — Royal NP / Port Hacking')+
-    chip('rIL','IL','Illawarra & Kiama')+
   '</div>';
 }
 
