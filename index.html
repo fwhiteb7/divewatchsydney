@@ -1662,7 +1662,7 @@ function hourlySparkline(dd, diveWindow, tideInfo){
 
   return `<div style="grid-column:1/-1;margin-top:6px">`+
     `<div style="color:var(--muted);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Hourly forecast</div>`+
-    `<svg viewBox="0 0 ${W} ${TOTAL_H+4}" width="100%" style="display:block;overflow:visible">`+
+    `<svg viewBox="0 0 ${W} ${TOTAL_H+13}" width="100%" style="display:block;overflow:visible">`+
       svg+
     `</svg>`+
     buildNote+
@@ -1814,7 +1814,7 @@ function siteScoreChart(site, dd, dateKey, diveWindow){
 
   return `<div style="grid-column:1/-1;margin-top:6px">`+
     `<div style="color:var(--muted);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">Hourly forecast</div>`+
-    `<svg viewBox="0 0 ${W} ${TOTAL_H+4}" width="100%" style="display:block;overflow:visible">`+
+    `<svg viewBox="0 0 ${W} ${TOTAL_H+13}" width="100%" style="display:block;overflow:visible">`+
       svg+tideLabels+
     `</svg>`+
     buildNote+
@@ -2242,7 +2242,7 @@ function renderOffshoreCard(){
         inlineMetric('Viz',vizBig,'',true)+
       '</div>'+
       ((tideNote||SUN[d])?'<div style="padding:5px 14px;font-size:.58rem;color:var(--muted);border-bottom:1px solid var(--border);text-align:center">'+tideNote+(SUN[d]?(tideNote?' · ':'')+'☀ '+SUN[d].rise+'–'+SUN[d].set:'')+'</div>':'')+
-      '<div style="padding:10px 14px 4px">'+
+      '<div style="padding:10px 14px 10px">'+
         hourlySparkline(hd, diveWindow, {station:tideStation, dateKey:d})+
       '</div>'+
     '</div>';
